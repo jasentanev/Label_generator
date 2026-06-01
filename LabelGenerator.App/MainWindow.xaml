@@ -1,0 +1,174 @@
+<Window x:Class="LabelGenerator.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Windows Label Generator"
+        Height="820"
+        Width="1280"
+        MinHeight="680"
+        MinWidth="1080"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="MinWidth" Value="92" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Padding" Value="10,0" />
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinWidth" Value="180" />
+            <Setter Property="Margin" Value="6,0,14,0" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="6,0,14,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                BorderBrush="#D0D7DE"
+                BorderThickness="0,0,0,1"
+                Padding="0,0,0,10">
+            <DockPanel LastChildFill="False">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <TextBlock Text="Data source" />
+                    <ComboBox ItemsSource="{Binding DataSources}"
+                              SelectedItem="{Binding SelectedDataSource}"
+                              DisplayMemberPath="DisplayName"
+                              Width="230" />
+                    <Button Content="Load view"
+                            Command="{Binding LoadPrimaryCommand}" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <TextBlock Text="Template" />
+                    <ComboBox ItemsSource="{Binding Templates}"
+                              SelectedItem="{Binding SelectedTemplate}"
+                              DisplayMemberPath="DisplayName"
+                              Width="230" />
+                    <Button Content="Designer"
+                            Command="{Binding OpenDesignerCommand}" />
+                    <TextBlock Text="Printer" Margin="20,0,0,0" />
+                    <ComboBox ItemsSource="{Binding Printers}"
+                              SelectedItem="{Binding SelectedPrinter}"
+                              Width="230" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="0,10,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Header="Regex filters">
+                <DataGrid ItemsSource="{Binding Filters}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          HeadersVisibility="Column"
+                          Height="150">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="On"
+                                                Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}"
+                                                Width="48" />
+                        <DataGridTextColumn Header="Column"
+                                            Binding="{Binding ColumnName}"
+                                            IsReadOnly="True"
+                                            Width="180" />
+                        <DataGridTextColumn Header="Regex pattern"
+                                            Binding="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"
+                                            Width="*" />
+                        <DataGridCheckBoxColumn Header="Case"
+                                                Binding="{Binding IsCaseSensitive, UpdateSourceTrigger=PropertyChanged}"
+                                                Width="64" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </GroupBox>
+
+            <StackPanel Grid.Column="1"
+                        Width="170"
+                        Margin="12,18,0,0">
+                <Button Content="Apply filters"
+                        HorizontalAlignment="Stretch"
+                        Command="{Binding ApplyFiltersCommand}" />
+                <Button Content="Clear filters"
+                        Margin="4,8,0,0"
+                        HorizontalAlignment="Stretch"
+                        Command="{Binding ClearFiltersCommand}" />
+                <Button Content="Load details"
+                        Margin="4,18,0,0"
+                        HorizontalAlignment="Stretch"
+                        Command="{Binding LoadDetailsCommand}" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.08*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="0.92*" />
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Header="Primary view">
+                <DataGrid x:Name="PrimaryDataGrid"
+                          ItemsSource="{Binding PrimaryRowsView}"
+                          SelectionMode="Extended"
+                          SelectionUnit="FullRow"
+                          AutoGenerateColumns="True"
+                          IsReadOnly="True"
+                          EnableRowVirtualization="True"
+                          EnableColumnVirtualization="True"
+                          SelectionChanged="PrimaryDataGrid_SelectionChanged" />
+            </GroupBox>
+
+            <GroupBox Grid.Column="2" Header="Detail view">
+                <DataGrid ItemsSource="{Binding DetailRowsView}"
+                          AutoGenerateColumns="True"
+                          IsReadOnly="True"
+                          EnableRowVirtualization="True"
+                          EnableColumnVirtualization="True" />
+            </GroupBox>
+        </Grid>
+
+        <Border Grid.Row="3"
+                BorderBrush="#D0D7DE"
+                BorderThickness="0,1,0,0"
+                Padding="0,10,0,0"
+                Margin="0,10,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <TextBlock Text="Copies" />
+                    <TextBox Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}"
+                             Width="56" />
+                    <TextBlock Text="Start label" />
+                    <TextBox Text="{Binding StartLabelPosition, UpdateSourceTrigger=PropertyChanged}"
+                             Width="56" />
+                    <Button Content="Preview"
+                            Command="{Binding PreviewCommand}" />
+                    <Button Content="Print"
+                            Command="{Binding PrintCommand}" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding StatusMessage}" />
+                    <TextBlock Text=" | Selected: " Margin="16,0,0,0" />
+                    <TextBlock Text="{Binding SelectedPrimaryCount}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

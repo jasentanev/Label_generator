@@ -1,0 +1,348 @@
+<Window x:Class="LabelGenerator.Designer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Label Template Designer"
+        Height="860"
+        Width="1380"
+        MinHeight="720"
+        MinWidth="1180"
+        WindowStartupLocation="CenterScreen"
+        KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Padding" Value="10,0" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,2,0,8" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="0,2,0,8" />
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                BorderBrush="#D0D7DE"
+                BorderThickness="0,0,0,1"
+                Padding="0,0,0,10">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <TextBlock Text="Template" />
+                    <ComboBox x:Name="TemplateComboBox"
+                              DisplayMemberPath="DisplayName"
+                              Width="280"
+                              Margin="8,0,8,0"
+                              SelectionChanged="TemplateComboBox_SelectionChanged" />
+                    <Button Content="New" Click="NewTemplateButton_Click" />
+                    <Button Content="Delete" Click="DeleteTemplateButton_Click" />
+                    <Button Content="Save" Click="SaveButton_Click" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Content="Add text" Click="AddTextButton_Click" />
+                    <Button Content="Add field" Click="AddFieldButton_Click" />
+                    <Button Content="Add barcode" Click="AddBarcodeButton_Click" />
+                    <Button Content="Add image" Click="AddImageButton_Click" />
+                    <Button Content="Add rectangle" Click="AddRectangleButton_Click" />
+                    <Button Content="Delete selected" Click="DeleteSelectedComponentButton_Click" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="0,12,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="275" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="320" />
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <GroupBox Header="Template">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.ColumnSpan="2" Text="Id" />
+                            <TextBox x:Name="TemplateIdTextBox" Grid.Row="1" Grid.ColumnSpan="2" />
+
+                            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="Name" />
+                            <TextBox x:Name="TemplateNameTextBox" Grid.Row="3" Grid.ColumnSpan="2" />
+
+                            <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="Template file" />
+                            <TextBox x:Name="TemplatePathTextBox" Grid.Row="5" Grid.ColumnSpan="2" />
+
+                            <CheckBox x:Name="ShowBorderCheckBox"
+                                      Grid.Row="6"
+                                      Grid.ColumnSpan="2"
+                                      Content="Show label border"
+                                      Margin="0,2,0,8" />
+
+                            <CheckBox x:Name="UseLabelCountCheckBox"
+                                      Grid.Row="7"
+                                      Grid.ColumnSpan="2"
+                                      Content="Use LabelCount column"
+                                      Margin="0,2,0,8" />
+
+                            <TextBlock Grid.Row="8" Text="Count column" />
+                            <TextBlock Grid.Row="8" Grid.Column="1" Text="Max/item" Margin="6,0,0,0" />
+                            <TextBox x:Name="LabelCountColumnTextBox" Grid.Row="9" />
+                            <TextBox x:Name="MaxLabelCountTextBox" Grid.Row="9" Grid.Column="1" Margin="6,2,0,8" />
+
+                            <TextBlock Grid.Row="10" Text="Label W mm" />
+                            <TextBlock Grid.Row="10" Grid.Column="1" Text="Label H mm" Margin="6,0,0,0" />
+                            <TextBox x:Name="LabelWidthTextBox" Grid.Row="11" />
+                            <TextBox x:Name="LabelHeightTextBox" Grid.Row="11" Grid.Column="1" Margin="6,2,0,8" />
+
+                            <TextBlock Grid.Row="12" Text="Cols" />
+                            <TextBlock Grid.Row="12" Grid.Column="1" Text="Rows" Margin="6,0,0,0" />
+                            <TextBox x:Name="ColumnsTextBox" Grid.Row="13" />
+                            <TextBox x:Name="RowsTextBox" Grid.Row="13" Grid.Column="1" Margin="6,2,0,8" />
+
+                            <Button Grid.Row="14"
+                                    Grid.ColumnSpan="2"
+                                    Content="Apply template"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,6,0,0"
+                                    Click="ApplyTemplateButton_Click" />
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Header="Master view filters" Margin="0,12,0,0">
+                        <DockPanel Margin="8">
+                            <ListBox x:Name="MasterFiltersListBox"
+                                     DockPanel.Dock="Top"
+                                     DisplayMemberPath="DisplayName"
+                                     MinHeight="110"
+                                     MaxHeight="160"
+                                     SelectionChanged="MasterFiltersListBox_SelectionChanged" />
+
+                            <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.ColumnSpan="2" Text="Column" />
+                                <ComboBox x:Name="MasterFilterColumnComboBox"
+                                          Grid.Row="1"
+                                          Grid.ColumnSpan="2"
+                                          IsEditable="True" />
+
+                                <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="Regex" />
+                                <TextBox x:Name="MasterFilterPatternTextBox"
+                                         Grid.Row="3"
+                                         Grid.ColumnSpan="2" />
+
+                                <CheckBox x:Name="MasterFilterEnabledCheckBox"
+                                          Grid.Row="4"
+                                          Content="Enabled"
+                                          IsChecked="True"
+                                          Margin="0,0,0,8" />
+                                <CheckBox x:Name="MasterFilterCaseCheckBox"
+                                          Grid.Row="4"
+                                          Grid.Column="1"
+                                          Content="Case"
+                                          Margin="6,0,0,8" />
+
+                                <StackPanel Grid.Row="5"
+                                            Grid.ColumnSpan="2"
+                                            Orientation="Horizontal">
+                                    <Button Content="Add" Width="58" Click="AddMasterFilterButton_Click" />
+                                    <Button Content="Apply" Width="64" Click="ApplyMasterFilterButton_Click" />
+                                    <Button Content="Delete" Width="72" Click="DeleteMasterFilterButton_Click" />
+                                </StackPanel>
+                            </Grid>
+                        </DockPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="Elements" Margin="0,12,0,0">
+                        <DockPanel Margin="8">
+                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Up" Width="58" Click="MoveElementUpButton_Click" />
+                                <Button Content="Down" Width="68" Click="MoveElementDownButton_Click" />
+                                <Button Content="Delete" Width="72" Click="DeleteElementButton_Click" />
+                            </StackPanel>
+                            <ListBox x:Name="ElementsListBox"
+                                     DisplayMemberPath="DisplayName"
+                                     MinHeight="230"
+                                     SelectionChanged="ElementsListBox_SelectionChanged" />
+                        </DockPanel>
+                    </GroupBox>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Column="2"
+                    Background="#F6F8FA"
+                    BorderBrush="#D0D7DE"
+                    BorderThickness="1">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top"
+                                Orientation="Horizontal"
+                                Margin="10">
+                        <TextBlock Text="Zoom" />
+                        <Slider x:Name="ZoomSlider"
+                                Width="180"
+                                Minimum="0.75"
+                                Maximum="3"
+                                Value="2"
+                                TickFrequency="0.25"
+                                Margin="8,0"
+                                ValueChanged="ZoomSlider_ValueChanged" />
+                        <TextBlock x:Name="CanvasSizeTextBlock" />
+                    </StackPanel>
+
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto"
+                                  Padding="24">
+                        <Canvas x:Name="DesignCanvas"
+                                Background="White"
+                                MouseLeftButtonDown="DesignCanvas_MouseLeftButtonDown" />
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto">
+                <GroupBox Header="Selected element">
+                    <Grid Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.ColumnSpan="2" Text="Type" />
+                        <ComboBox x:Name="ElementTypeComboBox" Grid.Row="1" Grid.ColumnSpan="2" />
+
+                        <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="Text" />
+                        <TextBox x:Name="ElementTextTextBox" Grid.Row="3" Grid.ColumnSpan="2" />
+
+                        <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="Field" />
+                        <ComboBox x:Name="FieldNameComboBox"
+                                  Grid.Row="5"
+                                  Grid.ColumnSpan="2"
+                                  IsEditable="True" />
+
+                        <TextBlock Grid.Row="6" Text="X mm" />
+                        <TextBlock Grid.Row="6" Grid.Column="1" Text="Y mm" Margin="6,0,0,0" />
+                        <TextBox x:Name="ElementXTextBox" Grid.Row="7" />
+                        <TextBox x:Name="ElementYTextBox" Grid.Row="7" Grid.Column="1" Margin="6,2,0,8" />
+
+                        <TextBlock Grid.Row="8" Text="Width mm" />
+                        <TextBlock Grid.Row="8" Grid.Column="1" Text="Height mm" Margin="6,0,0,0" />
+                        <TextBox x:Name="ElementWidthTextBox" Grid.Row="9" />
+                        <TextBox x:Name="ElementHeightTextBox" Grid.Row="9" Grid.Column="1" Margin="6,2,0,8" />
+
+                        <TextBlock Grid.Row="10" Text="Font size" />
+                        <TextBlock Grid.Row="10" Grid.Column="1" Text="Align" Margin="6,0,0,0" />
+                        <TextBox x:Name="FontSizeTextBox" Grid.Row="11" />
+                        <ComboBox x:Name="TextAlignmentComboBox" Grid.Row="11" Grid.Column="1" Margin="6,2,0,8" />
+
+                        <CheckBox x:Name="BoldCheckBox"
+                                  Grid.Row="12"
+                                  Grid.ColumnSpan="2"
+                                  Content="Bold"
+                                  Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="13" Text="Foreground" />
+                        <TextBlock Grid.Row="13" Grid.Column="1" Text="Background" Margin="6,0,0,0" />
+                        <TextBox x:Name="ForegroundTextBox" Grid.Row="14" />
+                        <TextBox x:Name="BackgroundTextBox" Grid.Row="14" Grid.Column="1" Margin="6,2,0,8" />
+
+                        <TextBlock Grid.Row="15" Text="Barcode" />
+                        <CheckBox x:Name="HumanReadableCheckBox"
+                                  Grid.Row="15"
+                                  Grid.Column="1"
+                                  Content="Text"
+                                  Margin="6,0,0,0" />
+                        <ComboBox x:Name="BarcodeSymbologyComboBox" Grid.Row="16" Grid.ColumnSpan="2" />
+
+                        <DockPanel Grid.Row="17" Grid.ColumnSpan="2" Margin="0,4,0,0">
+                            <Button DockPanel.Dock="Right" Content="Browse" Click="BrowseImageButton_Click" />
+                            <TextBox x:Name="ImagePathTextBox" Margin="0,2,6,0" />
+                        </DockPanel>
+
+                        <Button Grid.Row="18"
+                                Grid.ColumnSpan="2"
+                                Content="Apply element"
+                                HorizontalAlignment="Stretch"
+                                Margin="0,12,0,0"
+                                Click="ApplyElementButton_Click" />
+                    </Grid>
+                </GroupBox>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="2"
+                BorderBrush="#D0D7DE"
+                BorderThickness="0,1,0,0"
+                Padding="0,8,0,0">
+            <TextBlock x:Name="StatusTextBlock" />
+        </Border>
+    </Grid>
+</Window>
