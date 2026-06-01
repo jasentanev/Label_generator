@@ -1,6 +1,5 @@
 using System.Data.Common;
 using System.Data.Odbc;
-using Dapper;
 using LabelGenerator.Core.Models;
 using Microsoft.Data.SqlClient;
 using MySqlConnector;
@@ -120,6 +119,48 @@ public sealed class DataSourceService : IDataSourceService
         return await ReadRowsAsync(command, null, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<string>> LookupKeysAsync(
+        DataSourceProfile profile,
+        string scanValue,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        if (string.IsNullOrWhiteSpace(scanValue))
+        {
+            return [];
+        }
+
+        if (profile.IsDemo || string.IsNullOrWhiteSpace(profile.LookupSql))
+        {
+            await Task.Yield();
+            return [scanValue.Trim()];
+        }
+
+        ProviderRegistration.Value.Equals(true);
+
+        await using var connection = CreateConnection(profile);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = CreateCommand(
+            connection,
+            DatabaseSqlBuilder.BuildLookupQuery(profile, DatabaseSqlBuilder.BuildScanParameterPlaceholder(profile)),
+            profile.CommandTimeoutSeconds);
+
+        AddParameter(command, "scan", scanValue.Trim());
+
+        var rows = await ReadRowsAsync(command, null, cancellationToken);
+        var keyColumn = string.IsNullOrWhiteSpace(profile.LookupKeyColumn)
+            ? profile.KeyColumn
+            : profile.LookupKeyColumn;
+
+        return rows
+            .Select(row => ReadLookupKey(row, keyColumn))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList()!;
+    }
+
     private static DbConnection CreateConnection(DataSourceProfile profile)
     {
         if (string.IsNullOrWhiteSpace(profile.ProviderInvariantName))
@@ -197,6 +238,18 @@ public sealed class DataSourceService : IDataSourceService
 
     private static IReadOnlyDictionary<string, object?> CloneReadOnly(Dictionary<string, object?> row) =>
         new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase);
+
+    private static string? ReadLookupKey(IReadOnlyDictionary<string, object?> row, string keyColumn)
+    {
+        if (!string.IsNullOrWhiteSpace(keyColumn)
+            && row.TryGetValue(keyColumn, out var configuredValue)
+            && configuredValue is not null)
+        {
+            return Convert.ToString(configuredValue);
+        }
+
+        return row.Values.Any() ? Convert.ToString(row.Values.First()) : null;
+    }
 
     private IEnumerable<Dictionary<string, object?>> BuildDemoDetailRows(IEnumerable<object?> keys)
     {

@@ -241,6 +241,91 @@ public sealed class MainViewModel : ViewModelBase
         RaiseCommandStates();
     }
 
+    public IReadOnlyList<string> GetSelectedKeyStrings() =>
+        selectedKeyValues
+            .Select(Convert.ToString)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    public bool ShowOnlySelectedRows()
+    {
+        if (SelectedDataSource is null)
+        {
+            StatusMessage = "Select a data source first.";
+            return false;
+        }
+
+        var selectedKeys = GetSelectedKeyStrings();
+        if (selectedKeys.Count == 0)
+        {
+            StatusMessage = "Select master rows first.";
+            return false;
+        }
+
+        var keySet = selectedKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var selectedRows = filteredRows
+            .Where(row => row.TryGetValue(SelectedDataSource.KeyColumn, out var value)
+                && value is not null
+                && keySet.Contains(Convert.ToString(value) ?? string.Empty))
+            .ToList();
+
+        PrimaryRowsView = TabularDataBuilder.ToDataTable(selectedRows).DefaultView;
+        StatusMessage = $"Showing {selectedRows.Count} selected row(s) from {filteredRows.Count} filtered rows.";
+        RaiseCommandStates();
+        return true;
+    }
+
+    public void ShowFilteredRows()
+    {
+        PrimaryRowsView = TabularDataBuilder.ToDataTable(filteredRows).DefaultView;
+        StatusMessage = $"Showing all {filteredRows.Count} filtered row(s).";
+        RaiseCommandStates();
+    }
+
+    public async Task<IReadOnlyList<string>> LookupScanKeysAsync(string scanValue)
+    {
+        if (SelectedDataSource is null)
+        {
+            StatusMessage = "Select a data source first.";
+            return [];
+        }
+
+        if (primaryRows.Count == 0)
+        {
+            StatusMessage = "Load the primary view before scanning.";
+            return [];
+        }
+
+        if (string.IsNullOrWhiteSpace(scanValue))
+        {
+            StatusMessage = "Enter or scan a value first.";
+            return [];
+        }
+
+        try
+        {
+            var keys = await dataSourceService.LookupKeysAsync(SelectedDataSource, scanValue);
+            StatusMessage = keys.Count == 0
+                ? $"Scan '{scanValue}' returned no keys."
+                : $"Scan '{scanValue}' returned {keys.Count} key(s).";
+            return keys;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Scan lookup failed: {ex.Message}";
+            return [];
+        }
+    }
+
+    public void SetScanStatus(int keyCount, int selectedCount)
+    {
+        StatusMessage = selectedCount == 0
+            ? $"Scan returned {keyCount} key(s), but none are visible in the loaded primary view."
+            : $"Marked {selectedCount} row(s) from {keyCount} lookup key(s).";
+    }
+
     private async Task LoadPrimaryAsync()
     {
         if (SelectedDataSource is null)

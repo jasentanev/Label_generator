@@ -21,7 +21,9 @@ dotnet run --project .\LabelGenerator.App\LabelGenerator.App.csproj
 
 ## Configure a real database
 
-Edit `LabelGenerator.App\Config\appsettings.json` and add a `dataSources` entry:
+In the main application, click `Configure` next to the data source dropdown. The configuration window can create, edit, delete, save and test data sources.
+
+You can also edit `LabelGenerator.App\Config\appsettings.json` or the shared runtime config manually and add a `dataSources` entry:
 
 ```json
 {
@@ -85,6 +87,22 @@ Select an element and use `Delete selected`, the element-list `Delete` button, o
 ## Template master filters
 
 Each template can store `masterFilters`. These are regex filters applied to the first/master view when that template is selected. This lets a promo label show only promo rows, a damage label show only damage rows, and so on. Manual filters in the main app are applied in addition to template filters.
+
+## Scan lookup
+
+The scan field in the main app does not require the scanned barcode to exist in the loaded master view. Configure `lookupSql` on the data source. The query receives the scanned value through `{Scan}` and returns the key used by the master view.
+
+Example where the master key is `ItemId`, but scanned barcodes are in another table:
+
+```json
+{
+  "keyColumn": "ItemId",
+  "lookupKeyColumn": "ItemId",
+  "lookupSql": "select cast(a.code as varchar(50)) as ItemId from articles a join article_barcodes b on b.article_id = a.id where b.barcode = {Scan}"
+}
+```
+
+For ODBC the app replaces `{Scan}` with `?`; for the other providers it uses a named parameter. The lookup can return one row or multiple rows. If `lookupKeyColumn` is empty, the first returned column is used as the key.
 
 ## Label count
 

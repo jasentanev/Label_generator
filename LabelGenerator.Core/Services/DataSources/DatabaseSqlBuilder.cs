@@ -50,6 +50,30 @@ public static partial class DatabaseSqlBuilder
         return $"select * from {viewName} where {keyColumn} in ({keyPlaceholders})";
     }
 
+    public static string BuildLookupQuery(DataSourceProfile profile, string scanParameterPlaceholder)
+    {
+        if (string.IsNullOrWhiteSpace(profile.LookupSql))
+        {
+            throw new ArgumentException("LookupSql is required for datasource lookup queries.", nameof(profile.LookupSql));
+        }
+
+        var sql = RequireSelectStatement(profile.LookupSql, nameof(profile.LookupSql));
+        if (!sql.Contains("{Scan}", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("LookupSql must contain a {Scan} token for the scanned value.", nameof(profile.LookupSql));
+        }
+
+        return sql.Replace("{Scan}", scanParameterPlaceholder, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static string BuildScanParameterPlaceholder(DataSourceProfile profile)
+    {
+        var isOdbc = string.Equals(profile.ProviderInvariantName, "System.Data.Odbc", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(profile.ProviderInvariantName, "Odbc", StringComparison.OrdinalIgnoreCase);
+
+        return isOdbc ? "?" : "@scan";
+    }
+
     public static IReadOnlyList<string> BuildKeyParameterPlaceholders(DataSourceProfile profile, int count)
     {
         if (count <= 0)

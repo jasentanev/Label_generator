@@ -12,4 +12,9 @@ public interface IDataSourceService
         DataSourceProfile profile,
         IEnumerable<object?> keys,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> LookupKeysAsync(
+        DataSourceProfile profile,
+        string scanValue,
+        CancellationToken cancellationToken = default);
 }

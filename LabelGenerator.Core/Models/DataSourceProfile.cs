@@ -18,6 +18,10 @@ public sealed class DataSourceProfile
 
     public string DetailSql { get; set; } = string.Empty;
 
+    public string LookupSql { get; set; } = string.Empty;
+
+    public string LookupKeyColumn { get; set; } = string.Empty;
+
     public string KeyColumn { get; set; } = string.Empty;
 
     public int MaxRows { get; set; } = 500;

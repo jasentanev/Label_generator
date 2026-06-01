@@ -48,8 +48,16 @@
                               SelectedItem="{Binding SelectedDataSource}"
                               DisplayMemberPath="DisplayName"
                               Width="230" />
+                    <Button Content="Configure"
+                            Click="ConfigureDataSourcesButton_Click" />
                     <Button Content="Load view"
                             Command="{Binding LoadPrimaryCommand}" />
+                    <TextBlock Text="Scan" Margin="18,0,0,0" />
+                    <TextBox x:Name="ScanTextBox"
+                             Width="220"
+                             KeyDown="ScanTextBox_KeyDown" />
+                    <Button Content="Mark"
+                            Click="MarkScanButton_Click" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
@@ -113,6 +121,14 @@
                         Margin="4,18,0,0"
                         HorizontalAlignment="Stretch"
                         Command="{Binding LoadDetailsCommand}" />
+                <Button Content="Only selected"
+                        Margin="4,8,0,0"
+                        HorizontalAlignment="Stretch"
+                        Click="OnlySelectedButton_Click" />
+                <Button Content="Show filtered"
+                        Margin="4,8,0,0"
+                        HorizontalAlignment="Stretch"
+                        Click="ShowFilteredRowsButton_Click" />
             </StackPanel>
         </Grid>
 

@@ -96,4 +96,41 @@ public sealed class DatabaseSqlBuilderTests
 
         Assert.Equal(["?", "?", "?"], placeholders);
     }
+
+    [Fact]
+    public void BuildLookupQuery_ReplacesScanToken()
+    {
+        var profile = new DataSourceProfile
+        {
+            LookupSql = "select ProductCode from BarcodeLookup where Barcode = {Scan}"
+        };
+
+        var sql = DatabaseSqlBuilder.BuildLookupQuery(profile, "@scan");
+
+        Assert.Equal("select ProductCode from BarcodeLookup where Barcode = @scan", sql);
+    }
+
+    [Fact]
+    public void BuildLookupQuery_RequiresScanToken()
+    {
+        var profile = new DataSourceProfile
+        {
+            LookupSql = "select ProductCode from BarcodeLookup"
+        };
+
+        Assert.Throws<ArgumentException>(() => DatabaseSqlBuilder.BuildLookupQuery(profile, "@scan"));
+    }
+
+    [Fact]
+    public void BuildScanParameterPlaceholder_UsesQuestionMarkForOdbc()
+    {
+        var profile = new DataSourceProfile
+        {
+            ProviderInvariantName = "System.Data.Odbc"
+        };
+
+        var placeholder = DatabaseSqlBuilder.BuildScanParameterPlaceholder(profile);
+
+        Assert.Equal("?", placeholder);
+    }
 }
