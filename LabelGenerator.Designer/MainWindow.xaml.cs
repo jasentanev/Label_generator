@@ -106,6 +106,12 @@ public partial class MainWindow : Window
         LabelHeightTextBox.Text = FormatNumber(selectedTemplate.Sheet.LabelHeightMillimeters);
         ColumnsTextBox.Text = selectedTemplate.Sheet.Columns.ToString(CultureInfo.InvariantCulture);
         RowsTextBox.Text = selectedTemplate.Sheet.Rows.ToString(CultureInfo.InvariantCulture);
+        MarginTopTextBox.Text = FormatNumber(selectedTemplate.Sheet.MarginTopMillimeters);
+        MarginBottomTextBox.Text = FormatNumber(selectedTemplate.Sheet.MarginBottomMillimeters);
+        MarginLeftTextBox.Text = FormatNumber(selectedTemplate.Sheet.MarginLeftMillimeters);
+        MarginRightTextBox.Text = FormatNumber(selectedTemplate.Sheet.MarginRightMillimeters);
+        GapXTextBox.Text = FormatNumber(selectedTemplate.Sheet.GapXMillimeters);
+        GapYTextBox.Text = FormatNumber(selectedTemplate.Sheet.GapYMillimeters);
     }
 
     private void ApplyTemplateButton_Click(object sender, RoutedEventArgs e)
@@ -141,6 +147,12 @@ public partial class MainWindow : Window
         selectedTemplate.Sheet.LabelHeightMillimeters = ParseDouble(LabelHeightTextBox.Text, selectedTemplate.Sheet.LabelHeightMillimeters);
         selectedTemplate.Sheet.Columns = Math.Max(1, ParseInt(ColumnsTextBox.Text, selectedTemplate.Sheet.Columns));
         selectedTemplate.Sheet.Rows = Math.Max(1, ParseInt(RowsTextBox.Text, selectedTemplate.Sheet.Rows));
+        selectedTemplate.Sheet.MarginTopMillimeters = Math.Max(0, ParseDouble(MarginTopTextBox.Text, selectedTemplate.Sheet.MarginTopMillimeters));
+        selectedTemplate.Sheet.MarginBottomMillimeters = Math.Max(0, ParseDouble(MarginBottomTextBox.Text, selectedTemplate.Sheet.MarginBottomMillimeters));
+        selectedTemplate.Sheet.MarginLeftMillimeters = Math.Max(0, ParseDouble(MarginLeftTextBox.Text, selectedTemplate.Sheet.MarginLeftMillimeters));
+        selectedTemplate.Sheet.MarginRightMillimeters = Math.Max(0, ParseDouble(MarginRightTextBox.Text, selectedTemplate.Sheet.MarginRightMillimeters));
+        selectedTemplate.Sheet.GapXMillimeters = Math.Max(0, ParseDouble(GapXTextBox.Text, selectedTemplate.Sheet.GapXMillimeters));
+        selectedTemplate.Sheet.GapYMillimeters = Math.Max(0, ParseDouble(GapYTextBox.Text, selectedTemplate.Sheet.GapYMillimeters));
     }
 
     private void RefreshTemplateListPreservingSelection()

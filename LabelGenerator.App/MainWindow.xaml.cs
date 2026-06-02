@@ -18,14 +18,20 @@ public partial class MainWindow : Window
     private readonly MainViewModel viewModel;
     private readonly JsonConfigurationStore configurationStore;
     private readonly DataSourceService dataSourceService;
+    private readonly StartupOptions startupOptions;
 
     public MainWindow()
     {
+        App.WriteStartupLog("MainWindow.ctor before InitializeComponent");
         InitializeComponent();
+        App.WriteStartupLog("MainWindow.ctor after InitializeComponent");
+        startupOptions = StartupOptions.Parse(Environment.GetCommandLineArgs().Skip(1));
+        App.WriteStartupLog($"Startup options: users={startupOptions.UserMode}; label={startupOptions.Label}; datasource={startupOptions.DataSource}; action={startupOptions.ActionMode}");
 
         var baseDirectory = AppContext.BaseDirectory;
         var bundledConfigurationPath = Path.Combine(baseDirectory, "Config", "appsettings.json");
         var configurationPath = ConfigurationPathResolver.ResolveSharedConfigurationPath(bundledConfigurationPath);
+        App.WriteStartupLog($"MainWindow configurationPath={configurationPath}");
         var assetBaseDirectory = Path.GetDirectoryName(configurationPath) ?? baseDirectory;
         var auditPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -40,16 +46,22 @@ public partial class MainWindow : Window
             new RegexColumnFilterService(),
             new WpfPrinterService(assetBaseDirectory),
             new DesignerAppLauncher(baseDirectory),
-            new FileAuditLogger(auditPath));
+            new FileAuditLogger(auditPath),
+            startupOptions);
 
         DataContext = viewModel;
-        Loaded += MainWindow_Loaded;
+        ContentRendered += MainWindow_ContentRendered;
+        App.WriteStartupLog("MainWindow.ctor completed");
     }
 
-    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void MainWindow_ContentRendered(object? sender, EventArgs e)
     {
-        Loaded -= MainWindow_Loaded;
+        ContentRendered -= MainWindow_ContentRendered;
+        App.WriteStartupLog("MainWindow.ContentRendered");
+        await Task.Yield();
         await viewModel.InitializeAsync();
+        await viewModel.ExecuteStartupActionAsync();
+        App.WriteStartupLog("MainWindow.InitializeAsync completed");
     }
 
     private void PrimaryDataGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -78,17 +90,67 @@ public partial class MainWindow : Window
         var keys = await viewModel.LookupScanKeysAsync(ScanTextBox.Text);
         if (keys.Count == 0)
         {
+            PlayMarkFailureSound();
             return;
         }
 
-        var selectedCount = SelectRowsByKeys(keys);
-        viewModel.SetSelectedPrimaryRows(PrimaryDataGrid.SelectedItems);
+        int selectedCount;
+        if (viewModel.IsShowingOnlySelectedRows)
+        {
+            var selectedKeys = viewModel.AddMarkedKeysToSelection(keys, out selectedCount);
+            if (selectedCount > 0)
+            {
+                SelectRowsByKeys(selectedKeys);
+                viewModel.SetSelectedPrimaryRows(PrimaryDataGrid.SelectedItems);
+            }
+        }
+        else
+        {
+            selectedCount = SelectRowsByKeys(keys);
+            viewModel.SetSelectedPrimaryRows(PrimaryDataGrid.SelectedItems);
+        }
+
         viewModel.SetScanStatus(keys.Count, selectedCount);
 
         if (selectedCount > 0)
         {
+            PlayMarkSuccessSound();
             ScanTextBox.Clear();
+            return;
         }
+
+        PlayMarkFailureSound();
+    }
+
+    private static void PlayMarkSuccessSound()
+    {
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                Console.Beep(880, 90);
+            }
+            catch
+            {
+                System.Media.SystemSounds.Beep.Play();
+            }
+        });
+    }
+
+    private static void PlayMarkFailureSound()
+    {
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                Console.Beep(220, 140);
+                Console.Beep(180, 140);
+            }
+            catch
+            {
+                System.Media.SystemSounds.Hand.Play();
+            }
+        });
     }
 
     private void OnlySelectedButton_Click(object sender, RoutedEventArgs e)

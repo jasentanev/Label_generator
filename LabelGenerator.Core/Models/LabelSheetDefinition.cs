@@ -10,6 +10,10 @@ public sealed class LabelSheetDefinition
 
     public double MarginTopMillimeters { get; set; } = 13.5;
 
+    public double MarginRightMillimeters { get; set; } = 9.5;
+
+    public double MarginBottomMillimeters { get; set; } = 29.8;
+
     public double LabelWidthMillimeters { get; set; } = 99.1;
 
     public double LabelHeightMillimeters { get; set; } = 38.1;

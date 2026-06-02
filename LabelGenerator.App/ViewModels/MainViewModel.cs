@@ -21,6 +21,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly IPrinterService printerService;
     private readonly IDesignerLauncher designerLauncher;
     private readonly IAuditLogger auditLogger;
+    private readonly StartupOptions startupOptions;
 
     private readonly List<IReadOnlyDictionary<string, object?>> primaryRows = [];
     private readonly List<IReadOnlyDictionary<string, object?>> filteredRows = [];
@@ -39,6 +40,7 @@ public sealed class MainViewModel : ViewModelBase
     private bool isBusy;
     private string statusMessage = "Load a data source to start.";
     private int selectedPrimaryCount;
+    private bool isShowingOnlySelectedRows;
 
     public MainViewModel(
         IConfigurationStore configurationStore,
@@ -46,7 +48,8 @@ public sealed class MainViewModel : ViewModelBase
         IColumnFilterService filterService,
         IPrinterService printerService,
         IDesignerLauncher designerLauncher,
-        IAuditLogger auditLogger)
+        IAuditLogger auditLogger,
+        StartupOptions? startupOptions = null)
     {
         this.configurationStore = configurationStore;
         this.dataSourceService = dataSourceService;
@@ -54,6 +57,7 @@ public sealed class MainViewModel : ViewModelBase
         this.printerService = printerService;
         this.designerLauncher = designerLauncher;
         this.auditLogger = auditLogger;
+        this.startupOptions = startupOptions ?? new StartupOptions();
 
         LoadPrimaryCommand = new AsyncRelayCommand(LoadPrimaryAsync, CanLoadPrimary);
         LoadDetailsCommand = new AsyncRelayCommand(LoadDetailsAsync, CanUseRows);
@@ -71,6 +75,14 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<ColumnFilterViewModel> Filters { get; } = [];
 
     public ObservableCollection<string> Printers { get; } = [];
+
+    public bool ShowConfigureButton => startupOptions.ShowConfigureButton;
+
+    public bool ShowDesignerButton => startupOptions.ShowDesignerButton;
+
+    public bool ShowDataSourceSelector => startupOptions.ShowDataSourceSelector;
+
+    public bool ShowTemplateSelector => startupOptions.ShowTemplateSelector;
 
     public AsyncRelayCommand LoadPrimaryCommand { get; }
 
@@ -178,12 +190,16 @@ public sealed class MainViewModel : ViewModelBase
         private set => SetProperty(ref selectedPrimaryCount, value);
     }
 
+    public bool IsShowingOnlySelectedRows => isShowingOnlySelectedRows;
+
     public async Task InitializeAsync()
     {
+        App.WriteStartupLog("MainViewModel.InitializeAsync start");
         IsBusy = true;
         try
         {
             var configuration = await configurationStore.LoadAsync();
+            App.WriteStartupLog("MainViewModel configuration loaded");
 
             DataSources.Clear();
             foreach (var profile in configuration.DataSources)
@@ -199,17 +215,36 @@ public sealed class MainViewModel : ViewModelBase
 
             templateRepository = new TemplateRepository(configuration.LabelTemplates);
 
-            Printers.Clear();
-            foreach (var printer in printerService.GetPrinterNames())
+            var printerLoadStatus = await LoadPrintersWithTimeoutAsync();
+
+            var startupMessages = new List<string>();
+            var dataSourceRequested = !string.IsNullOrWhiteSpace(startupOptions.DataSource);
+            var labelRequested = !string.IsNullOrWhiteSpace(startupOptions.Label);
+            var resolvedDataSource = ResolveDataSource(startupOptions.DataSource);
+            var resolvedTemplate = ResolveTemplate(startupOptions.Label);
+
+            if (dataSourceRequested && resolvedDataSource is null)
             {
-                Printers.Add(printer);
+                startupMessages.Add($"Data source '{startupOptions.DataSource}' was not found.");
             }
 
-            SelectedDataSource = DataSources.FirstOrDefault();
-            SelectedTemplate = Templates.FirstOrDefault();
+            if (labelRequested && resolvedTemplate is null)
+            {
+                startupMessages.Add($"Label '{startupOptions.Label}' was not found.");
+            }
+
+            SelectedDataSource = dataSourceRequested ? resolvedDataSource : DataSources.FirstOrDefault();
+            SelectedTemplate = labelRequested ? resolvedTemplate : Templates.FirstOrDefault();
             SelectedPrinter = Printers.FirstOrDefault() ?? string.Empty;
             SelectTemplatePrinter();
-            StatusMessage = "Configuration loaded.";
+            var startupSummary = BuildStartupSummary();
+            StatusMessage = string.Join(" ", new[]
+            {
+                "Configuration loaded.",
+                string.Join(" ", startupMessages),
+                startupSummary,
+                printerLoadStatus
+            }.Where(value => !string.IsNullOrWhiteSpace(value)));
         }
         catch (Exception ex)
         {
@@ -219,6 +254,75 @@ public sealed class MainViewModel : ViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    public async Task ExecuteStartupActionAsync()
+    {
+        if (startupOptions.ActionMode == StartupActionMode.None)
+        {
+            return;
+        }
+
+        if (SelectedDataSource is null || SelectedTemplate is null)
+        {
+            StatusMessage = "Startup action skipped: data source or label template was not found.";
+            return;
+        }
+
+        if (Printers.Count > 0)
+        {
+            SelectedPrinter = Printers[0];
+        }
+
+        await LoadPrimaryAsync();
+        if (primaryRows.Count == 0)
+        {
+            StatusMessage = "Startup action skipped: primary view returned no rows.";
+            return;
+        }
+
+        if (startupOptions.ActionMode == StartupActionMode.Preview)
+        {
+            await PreviewAsync();
+            return;
+        }
+
+        await PrintAsync();
+    }
+
+    private async Task<string> LoadPrintersWithTimeoutAsync()
+    {
+        IReadOnlyList<string> printers;
+        try
+        {
+            App.WriteStartupLog("MainViewModel printer load start");
+            printers = await Task
+                .Run(printerService.GetPrinterNames)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            App.WriteStartupLog($"MainViewModel printer load completed count={printers.Count}");
+        }
+        catch (TimeoutException)
+        {
+            App.WriteStartupLog("MainViewModel printer load timeout");
+            Printers.Clear();
+            return "Printer list timed out; preview still works and print can use the default dialog.";
+        }
+        catch (Exception ex)
+        {
+            App.WriteStartupLog($"MainViewModel printer load failed: {ex}");
+            Printers.Clear();
+            return $"Printer list failed: {ex.Message}";
+        }
+
+        Printers.Clear();
+        foreach (var printer in printers)
+        {
+            Printers.Add(printer);
+        }
+
+        return printers.Count == 0
+            ? "No Windows printers were found."
+            : string.Empty;
     }
 
     public void SetSelectedPrimaryRows(IList selectedItems)
@@ -264,24 +368,62 @@ public sealed class MainViewModel : ViewModelBase
             return false;
         }
 
-        var keySet = selectedKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var selectedRows = filteredRows
-            .Where(row => row.TryGetValue(SelectedDataSource.KeyColumn, out var value)
-                && value is not null
-                && keySet.Contains(Convert.ToString(value) ?? string.Empty))
-            .ToList();
-
-        PrimaryRowsView = TabularDataBuilder.ToDataTable(selectedRows).DefaultView;
-        StatusMessage = $"Showing {selectedRows.Count} selected row(s) from {filteredRows.Count} filtered rows.";
+        isShowingOnlySelectedRows = true;
+        var selectedRowCount = SetPrimaryViewToSelectedRows(selectedKeys);
+        StatusMessage = $"Showing {selectedRowCount} selected row(s) from {filteredRows.Count} filtered rows.";
         RaiseCommandStates();
         return true;
     }
 
     public void ShowFilteredRows()
     {
+        isShowingOnlySelectedRows = false;
         PrimaryRowsView = TabularDataBuilder.ToDataTable(filteredRows).DefaultView;
         StatusMessage = $"Showing all {filteredRows.Count} filtered row(s).";
         RaiseCommandStates();
+    }
+
+    public IReadOnlyList<string> AddMarkedKeysToSelection(IReadOnlyCollection<string> keys, out int matchedCount)
+    {
+        matchedCount = 0;
+        if (SelectedDataSource is null || keys.Count == 0)
+        {
+            return GetSelectedKeyStrings();
+        }
+
+        var lookupKeySet = keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var matchedKeys = filteredRows
+            .Select(row => row.TryGetValue(SelectedDataSource.KeyColumn, out var value) ? Convert.ToString(value) : null)
+            .Where(value => !string.IsNullOrWhiteSpace(value) && lookupKeySet.Contains(value))
+            .Select(value => value!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        matchedCount = matchedKeys.Count;
+        if (matchedKeys.Count == 0)
+        {
+            return GetSelectedKeyStrings();
+        }
+
+        var selectedKeySet = GetSelectedKeyStrings().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var key in matchedKeys)
+        {
+            if (selectedKeySet.Add(key))
+            {
+                selectedKeyValues.Add(key);
+            }
+        }
+
+        SelectedPrimaryCount = selectedKeyValues.Count;
+        detailKeysSignature = string.Empty;
+        var selectedKeys = GetSelectedKeyStrings();
+        if (isShowingOnlySelectedRows)
+        {
+            SetPrimaryViewToSelectedRows(selectedKeys);
+        }
+
+        RaiseCommandStates();
+        return selectedKeys;
     }
 
     public async Task<IReadOnlyList<string>> LookupScanKeysAsync(string scanValue)
@@ -387,6 +529,7 @@ public sealed class MainViewModel : ViewModelBase
 
         filteredRows.Clear();
         filteredRows.AddRange(filterService.Apply(primaryRows, filterModels));
+        isShowingOnlySelectedRows = false;
         PrimaryRowsView = TabularDataBuilder.ToDataTable(filteredRows).DefaultView;
         selectedKeyValues.Clear();
         SelectedPrimaryCount = 0;
@@ -428,7 +571,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private async Task PreviewAsync()
     {
-        if (!await EnsureDetailsForCurrentKeysAsync())
+        if (!await EnsureDetailsForCurrentKeysAsync(forceReload: true))
         {
             return;
         }
@@ -474,7 +617,57 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private async Task<bool> EnsureDetailsForCurrentKeysAsync()
+    private DataSourceProfile? ResolveDataSource(string? requestedDataSource)
+    {
+        if (string.IsNullOrWhiteSpace(requestedDataSource))
+        {
+            return null;
+        }
+
+        return DataSources.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, requestedDataSource, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(candidate.DisplayName, requestedDataSource, StringComparison.CurrentCultureIgnoreCase));
+    }
+
+    private LabelTemplateProfile? ResolveTemplate(string? requestedLabel)
+    {
+        if (string.IsNullOrWhiteSpace(requestedLabel))
+        {
+            return null;
+        }
+
+        return Templates.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, requestedLabel, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(candidate.DisplayName, requestedLabel, StringComparison.CurrentCultureIgnoreCase));
+    }
+
+    private string BuildStartupSummary()
+    {
+        var parts = new List<string>();
+        if (startupOptions.UserMode)
+        {
+            parts.Add("User mode.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(startupOptions.DataSource))
+        {
+            parts.Add($"Data source fixed: {SelectedDataSource?.DisplayName ?? startupOptions.DataSource}.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(startupOptions.Label))
+        {
+            parts.Add($"Label fixed: {SelectedTemplate?.DisplayName ?? startupOptions.Label}.");
+        }
+
+        if (startupOptions.ActionMode != StartupActionMode.None)
+        {
+            parts.Add($"Startup action: {startupOptions.ActionMode}.");
+        }
+
+        return string.Join(" ", parts);
+    }
+
+    private async Task<bool> EnsureDetailsForCurrentKeysAsync(bool forceReload = false)
     {
         if (SelectedTemplate is null)
         {
@@ -490,7 +683,7 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         var signature = BuildKeySignature(keys);
-        if (detailRows.Count == 0 || !string.Equals(signature, detailKeysSignature, StringComparison.Ordinal))
+        if (forceReload || detailRows.Count == 0 || !string.Equals(signature, detailKeysSignature, StringComparison.Ordinal))
         {
             await LoadDetailsForKeysAsync(keys);
         }
@@ -609,6 +802,25 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    private int SetPrimaryViewToSelectedRows(IReadOnlyCollection<string> selectedKeys)
+    {
+        if (SelectedDataSource is null)
+        {
+            PrimaryRowsView = TabularDataBuilder.ToDataTable(Array.Empty<IReadOnlyDictionary<string, object?>>()).DefaultView;
+            return 0;
+        }
+
+        var keySet = selectedKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var selectedRows = filteredRows
+            .Where(row => row.TryGetValue(SelectedDataSource.KeyColumn, out var value)
+                && value is not null
+                && keySet.Contains(Convert.ToString(value) ?? string.Empty))
+            .ToList();
+
+        PrimaryRowsView = TabularDataBuilder.ToDataTable(selectedRows).DefaultView;
+        return selectedRows.Count;
+    }
+
     private void ClearRows()
     {
         primaryRows.Clear();
@@ -620,6 +832,7 @@ public sealed class MainViewModel : ViewModelBase
         PrimaryRowsView = null;
         DetailRowsView = null;
         SelectedPrimaryCount = 0;
+        isShowingOnlySelectedRows = false;
     }
 
     private bool CanLoadPrimary() => SelectedDataSource is not null && !IsBusy;

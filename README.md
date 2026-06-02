@@ -19,6 +19,26 @@ First implementation of the planned Windows desktop label workflow.
 dotnet run --project .\LabelGenerator.App\LabelGenerator.App.csproj
 ```
 
+## Command line options
+
+The published app accepts startup options:
+
+```powershell
+.\LabelGenerator.App.exe -Users
+.\LabelGenerator.App.exe -Users -datasource demo -label a4-2x7-demo
+.\LabelGenerator.App.exe -datasource demo -label a4-2x7-demo -Preview
+.\LabelGenerator.App.exe -datasource demo -label a4-2x7-demo -Print
+```
+
+- `-Users` hides the `Configure` and `Designer` buttons.
+- `-datasource <id-or-name>` selects the data source and hides the data source selector.
+- `-label <id-or-name>` selects the label template and hides the template selector.
+- `-Preview` loads the selected/default data source, loads detail rows for all filtered master rows, and opens preview.
+- `-Print` loads the selected/default data source, loads detail rows for all filtered master rows, and prints directly using the default printer.
+
+Options also support `--label=value`, `--datasource=value`, `/Preview`, and `/Print`.
+If a fixed `-label` or `-datasource` value is not found, the app does not fall back to another profile for startup print/preview.
+
 ## Configure a real database
 
 In the main application, click `Configure` next to the data source dropdown. The configuration window can create, edit, delete, save and test data sources.
