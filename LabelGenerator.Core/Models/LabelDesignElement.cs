@@ -24,6 +24,10 @@ public sealed class LabelDesignElement
 
     public bool IsBold { get; set; }
 
+    public bool IsItalic { get; set; }
+
+    public bool IsStrikethrough { get; set; }
+
     public LabelTextAlignment TextAlignment { get; set; } = LabelTextAlignment.Left;
 
     public string Foreground { get; set; } = "#000000";

@@ -19,16 +19,20 @@ public partial class MainWindow : Window
     private readonly JsonConfigurationStore configurationStore;
     private readonly DataSourceService dataSourceService;
     private readonly StartupOptions startupOptions;
+    private readonly BootSplashWindow? bootSplashWindow;
 
     public MainWindow()
     {
+        var baseDirectory = AppContext.BaseDirectory;
+        bootSplashWindow = BootSplashLoader.TryCreate(baseDirectory);
+        bootSplashWindow?.Show();
+
         App.WriteStartupLog("MainWindow.ctor before InitializeComponent");
         InitializeComponent();
         App.WriteStartupLog("MainWindow.ctor after InitializeComponent");
         startupOptions = StartupOptions.Parse(Environment.GetCommandLineArgs().Skip(1));
         App.WriteStartupLog($"Startup options: users={startupOptions.UserMode}; label={startupOptions.Label}; datasource={startupOptions.DataSource}; action={startupOptions.ActionMode}");
 
-        var baseDirectory = AppContext.BaseDirectory;
         var bundledConfigurationPath = Path.Combine(baseDirectory, "Config", "appsettings.json");
         var configurationPath = ConfigurationPathResolver.ResolveSharedConfigurationPath(bundledConfigurationPath);
         App.WriteStartupLog($"MainWindow configurationPath={configurationPath}");
@@ -60,8 +64,21 @@ public partial class MainWindow : Window
         App.WriteStartupLog("MainWindow.ContentRendered");
         await Task.Yield();
         await viewModel.InitializeAsync();
+        CloseBootSplash();
         await viewModel.ExecuteStartupActionAsync();
         App.WriteStartupLog("MainWindow.InitializeAsync completed");
+    }
+
+    private void CloseBootSplash()
+    {
+        try
+        {
+            bootSplashWindow?.Close();
+        }
+        catch (Exception ex)
+        {
+            App.WriteStartupLog($"Boot splash close failed: {ex}");
+        }
     }
 
     private void PrimaryDataGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -83,6 +100,18 @@ public partial class MainWindow : Window
     private async void MarkScanButton_Click(object sender, RoutedEventArgs e)
     {
         await MarkScanValueAsync();
+    }
+
+    private void QuickMarkPrintButton_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new QuickMarkPrintWindow(viewModel)
+        {
+            Owner = this
+        };
+
+        window.PrintedSuccessfully += (_, _) => ClearPrimarySelection();
+        window.ShowDialog();
+        ScanTextBox.Focus();
     }
 
     private async Task MarkScanValueAsync()
@@ -215,6 +244,12 @@ public partial class MainWindow : Window
         }
 
         return selectedCount;
+    }
+
+    private void ClearPrimarySelection()
+    {
+        PrimaryDataGrid.SelectedItems.Clear();
+        viewModel.ClearSelectedPrimaryRows();
     }
 
     private async void ConfigureDataSourcesButton_Click(object sender, RoutedEventArgs e)

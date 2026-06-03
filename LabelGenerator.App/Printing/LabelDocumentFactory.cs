@@ -148,6 +148,8 @@ public sealed class LabelDocumentFactory(string assetBaseDirectory)
             Text = text,
             FontSize = element.FontSize,
             FontWeight = element.IsBold ? FontWeights.SemiBold : FontWeights.Normal,
+            FontStyle = element.IsItalic ? FontStyles.Italic : FontStyles.Normal,
+            TextDecorations = element.IsStrikethrough ? TextDecorations.Strikethrough : null,
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
             Foreground = ParseBrush(element.Foreground, Brushes.Black),

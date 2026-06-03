@@ -39,6 +39,15 @@ The published app accepts startup options:
 Options also support `--label=value`, `--datasource=value`, `/Preview`, and `/Print`.
 If a fixed `-label` or `-datasource` value is not found, the app does not fall back to another profile for startup print/preview.
 
+## Boot splash
+
+Place both files next to `LabelGenerator.App.exe` to show a startup splash screen:
+
+- `log.jpg` - logo image
+- `info.txt` - text shown under the logo
+
+If either file is missing, the app starts without the splash screen.
+
 ## Configure a real database
 
 In the main application, click `Configure` next to the data source dropdown. The configuration window can create, edit, delete, save and test data sources.

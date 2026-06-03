@@ -353,6 +353,14 @@ public sealed class MainViewModel : ViewModelBase
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+    public void ClearSelectedPrimaryRows()
+    {
+        selectedKeyValues.Clear();
+        SelectedPrimaryCount = 0;
+        detailKeysSignature = string.Empty;
+        RaiseCommandStates();
+    }
+
     public bool ShowOnlySelectedRows()
     {
         if (SelectedDataSource is null)
@@ -459,6 +467,135 @@ public sealed class MainViewModel : ViewModelBase
             StatusMessage = $"Scan lookup failed: {ex.Message}";
             return [];
         }
+    }
+
+    public async Task<QuickMarkPrintResult> QuickMarkAndPrintAsync(string scanValue)
+    {
+        var normalizedScanValue = scanValue.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedScanValue))
+        {
+            StatusMessage = "Enter or scan a value first.";
+            return QuickMarkPrintResult.Failed(
+                QuickMarkPrintStatus.NoScanValue,
+                normalizedScanValue,
+                StatusMessage);
+        }
+
+        if (SelectedDataSource is null)
+        {
+            StatusMessage = "Select a data source first.";
+            return QuickMarkPrintResult.Failed(
+                QuickMarkPrintStatus.NoKey,
+                normalizedScanValue,
+                StatusMessage);
+        }
+
+        if (SelectedTemplate is null)
+        {
+            StatusMessage = "Select a template first.";
+            return QuickMarkPrintResult.Failed(
+                QuickMarkPrintStatus.TemplateInvalid,
+                normalizedScanValue,
+                StatusMessage);
+        }
+
+        if (primaryRows.Count == 0)
+        {
+            await LoadPrimaryAsync();
+        }
+
+        if (primaryRows.Count == 0 || filteredRows.Count == 0)
+        {
+            StatusMessage = "Primary view returned no rows for the current filters.";
+            return QuickMarkPrintResult.Failed(
+                QuickMarkPrintStatus.NoKey,
+                normalizedScanValue,
+                StatusMessage);
+        }
+
+        var lookupKeys = await LookupScanKeysAsync(normalizedScanValue);
+        if (lookupKeys.Count == 0)
+        {
+            return QuickMarkPrintResult.Failed(
+                QuickMarkPrintStatus.NoKey,
+                normalizedScanValue,
+                StatusMessage);
+        }
+
+        var matchedKeys = MatchKeysInFilteredMaster(lookupKeys);
+        if (matchedKeys.Count == 0)
+        {
+            StatusMessage = $"Scan '{normalizedScanValue}' returned {lookupKeys.Count} key(s), but none are in the filtered master view.";
+            return QuickMarkPrintResult.Failed(
+                QuickMarkPrintStatus.NotInFilteredMaster,
+                normalizedScanValue,
+                StatusMessage);
+        }
+
+        await LoadDetailsForKeysAsync(matchedKeys.Cast<object?>().ToList());
+        if (detailRows.Count == 0)
+        {
+            StatusMessage = $"No detail rows were loaded for scan '{normalizedScanValue}'.";
+            return QuickMarkPrintResult.Failed(
+                QuickMarkPrintStatus.NoDetailRows,
+                normalizedScanValue,
+                StatusMessage);
+        }
+
+        var validation = templateRepository.ValidateFields(SelectedTemplate, detailRows);
+        if (!validation.IsValid)
+        {
+            StatusMessage = "Template fields missing: " + string.Join(", ", validation.MissingFields);
+            return QuickMarkPrintResult.Failed(
+                QuickMarkPrintStatus.TemplateInvalid,
+                normalizedScanValue,
+                StatusMessage);
+        }
+
+        var request = new PrintRequest
+        {
+            SelectedKeys = matchedKeys,
+            TemplateId = SelectedTemplate.Id,
+            PrinterName = !string.IsNullOrWhiteSpace(SelectedPrinter)
+                ? SelectedPrinter
+                : SelectedTemplate.DefaultPrinter,
+            Copies = 1,
+            StartLabelPosition = 1,
+            Mode = PrintMode.DirectPrint
+        };
+
+        var printResult = printerService.Print(SelectedTemplate, detailRows, request);
+        if (printResult.Status != PrintStatus.Success)
+        {
+            StatusMessage = $"Quick print failed: {printResult.ErrorMessage}";
+            await auditLogger.WriteAsync(
+                $"QuickMarkPrint status={printResult.Status}; scan={normalizedScanValue}; template={request.TemplateId}; printer={request.PrinterName}; rows={detailRows.Count}; error={printResult.ErrorMessage}");
+            return new QuickMarkPrintResult
+            {
+                Status = QuickMarkPrintStatus.PrinterError,
+                ScanValue = normalizedScanValue,
+                Keys = matchedKeys,
+                DetailRowCount = detailRows.Count,
+                PrinterName = request.PrinterName,
+                Message = StatusMessage
+            };
+        }
+
+        await auditLogger.WriteAsync(
+            $"QuickMarkPrint status={printResult.Status}; scan={normalizedScanValue}; template={request.TemplateId}; printer={request.PrinterName}; rows={detailRows.Count}; labels={printResult.PrintedCount}; copies=1; labelCountColumn={SelectedTemplate.LabelCount.ColumnName}");
+
+        ClearSelectedPrimaryRows();
+        StatusMessage = $"Quick printed {printResult.PrintedCount} labels from {detailRows.Count} detail rows.";
+        return new QuickMarkPrintResult
+        {
+            Status = QuickMarkPrintStatus.Success,
+            ScanValue = normalizedScanValue,
+            Keys = matchedKeys,
+            DetailRowCount = detailRows.Count,
+            PrintedLabelCount = printResult.PrintedCount,
+            PrinterName = request.PrinterName,
+            Message = StatusMessage
+        };
     }
 
     public void SetScanStatus(int keyCount, int selectedCount)
@@ -706,10 +843,12 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         IsBusy = true;
+        detailRows.Clear();
+        detailKeysSignature = string.Empty;
+        DetailRowsView = null;
         try
         {
             var rows = await dataSourceService.LoadDetailRowsAsync(SelectedDataSource, keys);
-            detailRows.Clear();
             detailRows.AddRange(rows);
             detailKeysSignature = BuildKeySignature(keys);
             DetailRowsView = TabularDataBuilder.ToDataTable(detailRows).DefaultView;
@@ -763,6 +902,25 @@ public sealed class MainViewModel : ViewModelBase
         return filteredRows
             .Select(row => row.TryGetValue(SelectedDataSource.KeyColumn, out var value) ? value : null)
             .Where(value => value is not null)
+            .ToList();
+    }
+
+    private List<string> MatchKeysInFilteredMaster(IReadOnlyList<string> lookupKeys)
+    {
+        if (SelectedDataSource is null)
+        {
+            return [];
+        }
+
+        var filteredKeySet = filteredRows
+            .Select(row => row.TryGetValue(SelectedDataSource.KeyColumn, out var value) ? Convert.ToString(value) : null)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return lookupKeys
+            .Where(key => !string.IsNullOrWhiteSpace(key) && filteredKeySet.Contains(key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -47,6 +49,8 @@ public partial class MainWindow : Window
         Loaded -= MainWindow_Loaded;
 
         ElementTypeComboBox.ItemsSource = Enum.GetValues<LabelElementType>();
+        NewElementTypeComboBox.ItemsSource = Enum.GetValues<LabelElementType>();
+        NewElementTypeComboBox.SelectedItem = LabelElementType.Text;
         TextAlignmentComboBox.ItemsSource = Enum.GetValues<LabelTextAlignment>();
         BarcodeSymbologyComboBox.ItemsSource = Enum.GetValues<BarcodeSymbology>();
 
@@ -167,19 +171,7 @@ public partial class MainWindow : Window
 
     private void RefreshFieldNames()
     {
-        var fields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "ProductCode",
-            "ProductName",
-            "Category",
-            "BatchNo",
-            "ExpiryDate",
-            "Barcode",
-            "LabelCount",
-            "NetWeight",
-            "Country",
-            "Storage"
-        };
+        var fields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var dataSource in configuration.DataSources)
         {
@@ -192,6 +184,14 @@ public partial class MainWindow : Window
         if (selectedTemplate is not null)
         {
             foreach (var field in selectedTemplate.ExpectedFields)
+            {
+                fields.Add(field);
+            }
+
+            foreach (var field in selectedTemplate.Design.Elements
+                         .Where(element => element.Type is LabelElementType.Field or LabelElementType.Barcode)
+                         .Select(element => element.FieldName)
+                         .Where(field => !string.IsNullOrWhiteSpace(field)))
             {
                 fields.Add(field);
             }
@@ -286,7 +286,7 @@ public partial class MainWindow : Window
         new()
         {
             ColumnName = string.IsNullOrWhiteSpace(MasterFilterColumnComboBox.Text)
-                ? "Status"
+                ? string.Empty
                 : MasterFilterColumnComboBox.Text.Trim(),
             Pattern = MasterFilterPatternTextBox.Text,
             IsEnabled = MasterFilterEnabledCheckBox.IsChecked == true,
@@ -325,6 +325,8 @@ public partial class MainWindow : Window
             FontSizeTextBox.Text = string.Empty;
             TextAlignmentComboBox.SelectedItem = null;
             BoldCheckBox.IsChecked = false;
+            ItalicCheckBox.IsChecked = false;
+            StrikethroughCheckBox.IsChecked = false;
             ForegroundTextBox.Text = string.Empty;
             BackgroundTextBox.Text = string.Empty;
             BarcodeSymbologyComboBox.SelectedItem = null;
@@ -344,6 +346,8 @@ public partial class MainWindow : Window
         FontSizeTextBox.Text = FormatNumber(selectedElement.FontSize);
         TextAlignmentComboBox.SelectedItem = selectedElement.TextAlignment;
         BoldCheckBox.IsChecked = selectedElement.IsBold;
+        ItalicCheckBox.IsChecked = selectedElement.IsItalic;
+        StrikethroughCheckBox.IsChecked = selectedElement.IsStrikethrough;
         ForegroundTextBox.Text = selectedElement.Foreground;
         BackgroundTextBox.Text = selectedElement.Background;
         BarcodeSymbologyComboBox.SelectedItem = selectedElement.BarcodeSymbology;
@@ -378,6 +382,8 @@ public partial class MainWindow : Window
         element.FontSize = Math.Max(1, ParseDouble(FontSizeTextBox.Text, element.FontSize));
         element.TextAlignment = TextAlignmentComboBox.SelectedItem is LabelTextAlignment alignment ? alignment : element.TextAlignment;
         element.IsBold = BoldCheckBox.IsChecked == true;
+        element.IsItalic = ItalicCheckBox.IsChecked == true;
+        element.IsStrikethrough = StrikethroughCheckBox.IsChecked == true;
         element.Foreground = string.IsNullOrWhiteSpace(ForegroundTextBox.Text) ? "#000000" : ForegroundTextBox.Text.Trim();
         element.Background = string.IsNullOrWhiteSpace(BackgroundTextBox.Text) ? "Transparent" : BackgroundTextBox.Text.Trim();
         element.BarcodeSymbology = BarcodeSymbologyComboBox.SelectedItem is BarcodeSymbology symbology
@@ -448,6 +454,39 @@ public partial class MainWindow : Window
         SetStatus("New template created. Add elements and save.");
     }
 
+    private void CopyTemplateAsNewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (selectedTemplate is null)
+        {
+            SetStatus("Select a template first.");
+            return;
+        }
+
+        ApplyTemplateProperties();
+        if (selectedElement is not null)
+        {
+            ApplyElementProperties(selectedElement);
+        }
+
+        var copy = CloneTemplate(selectedTemplate);
+        var id = $"label-{DateTime.Now:yyyyMMddHHmmss}";
+        copy.Id = id;
+        copy.DisplayName = $"{selectedTemplate.DisplayName} copy";
+        copy.TemplateFilePath = $"Templates/{id}.label.json";
+        foreach (var element in copy.Design.Elements)
+        {
+            element.Id = Guid.NewGuid().ToString("N");
+        }
+
+        configuration.LabelTemplates.Add(copy);
+        selectedTemplate = copy;
+        selectedElement = null;
+        selectedMasterFilter = null;
+        RefreshTemplateList();
+        TemplateComboBox.SelectedItem = copy;
+        SetStatus("Template copied as new. Save to persist.");
+    }
+
     private void DeleteTemplateButton_Click(object sender, RoutedEventArgs e)
     {
         if (selectedTemplate is null)
@@ -474,6 +513,67 @@ public partial class MainWindow : Window
         TemplateComboBox.SelectedItem = selectedTemplate;
         SetStatus("Template deleted. Save to persist the change.");
     }
+
+    private void NewElementButton_Click(object sender, RoutedEventArgs e)
+    {
+        var type = NewElementTypeComboBox.SelectedItem is LabelElementType selectedType
+            ? selectedType
+            : LabelElementType.Text;
+
+        if (type == LabelElementType.Image)
+        {
+            AddImageElement();
+            return;
+        }
+
+        AddElement(CreateDefaultElement(type));
+    }
+
+    private LabelDesignElement CreateDefaultElement(LabelElementType type) =>
+        type switch
+        {
+            LabelElementType.Field => new LabelDesignElement
+            {
+                Type = LabelElementType.Field,
+                FieldName = FieldNameComboBox.Text.Trim().Length > 0 ? FieldNameComboBox.Text.Trim() : string.Empty,
+                XMillimeters = 5,
+                YMillimeters = 15,
+                WidthMillimeters = 50,
+                HeightMillimeters = 9,
+                FontSize = 10
+            },
+            LabelElementType.Barcode => new LabelDesignElement
+            {
+                Type = LabelElementType.Barcode,
+                FieldName = FieldNameComboBox.Text.Trim().Length > 0 ? FieldNameComboBox.Text.Trim() : string.Empty,
+                XMillimeters = 5,
+                YMillimeters = 25,
+                WidthMillimeters = 50,
+                HeightMillimeters = 18,
+                BarcodeSymbology = BarcodeSymbology.Code128,
+                ShowHumanReadableText = true
+            },
+            LabelElementType.Rectangle => new LabelDesignElement
+            {
+                Type = LabelElementType.Rectangle,
+                XMillimeters = 4,
+                YMillimeters = 4,
+                WidthMillimeters = 40,
+                HeightMillimeters = 20,
+                Foreground = "#000000",
+                Background = "Transparent"
+            },
+            _ => new LabelDesignElement
+            {
+                Type = LabelElementType.Text,
+                Text = "Text",
+                XMillimeters = 5,
+                YMillimeters = 5,
+                WidthMillimeters = 30,
+                HeightMillimeters = 8,
+                FontSize = 10
+            }
+        };
 
     private void AddTextButton_Click(object sender, RoutedEventArgs e) =>
         AddElement(new LabelDesignElement
@@ -526,6 +626,11 @@ public partial class MainWindow : Window
 
     private void AddImageButton_Click(object sender, RoutedEventArgs e)
     {
+        AddImageElement();
+    }
+
+    private void AddImageElement()
+    {
         var dialog = CreateImageDialog();
         if (dialog.ShowDialog(this) != true)
         {
@@ -541,6 +646,19 @@ public partial class MainWindow : Window
             WidthMillimeters = 25,
             HeightMillimeters = 20
         });
+    }
+
+    private static LabelTemplateProfile CloneTemplate(LabelTemplateProfile template)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        var json = JsonSerializer.Serialize(template, options);
+        return JsonSerializer.Deserialize<LabelTemplateProfile>(json, options)
+            ?? throw new InvalidOperationException("Template clone failed.");
     }
 
     private void AddElement(LabelDesignElement element)
@@ -713,6 +831,8 @@ public partial class MainWindow : Window
             Text = text,
             FontSize = element.FontSize,
             FontWeight = element.IsBold ? FontWeights.SemiBold : FontWeights.Normal,
+            FontStyle = element.IsItalic ? FontStyles.Italic : FontStyles.Normal,
+            TextDecorations = element.IsStrikethrough ? TextDecorations.Strikethrough : null,
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
             Foreground = ParseBrush(element.Foreground, Brushes.Black),

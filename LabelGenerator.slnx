@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="LabelGenerator.App/LabelGenerator.App.csproj" />
+  <Project Path="LabelGenerator.App.Tests/LabelGenerator.App.Tests.csproj" />
   <Project Path="LabelGenerator.Core.Tests/LabelGenerator.Core.Tests.csproj" />
   <Project Path="LabelGenerator.Core/LabelGenerator.Core.csproj" />
   <Project Path="LabelGenerator.Designer/LabelGenerator.Designer.csproj" />

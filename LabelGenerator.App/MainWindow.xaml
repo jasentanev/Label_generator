@@ -229,6 +229,8 @@
                                 <Button Content="Mark"
                                         Style="{StaticResource PrimaryButtonStyle}"
                                         Click="MarkScanButton_Click" />
+                                <Button Content="Mark &amp; Print"
+                                        Click="QuickMarkPrintButton_Click" />
 
                                 <TextBlock Text="Copies"
                                            Style="{StaticResource LabelTextStyle}"
