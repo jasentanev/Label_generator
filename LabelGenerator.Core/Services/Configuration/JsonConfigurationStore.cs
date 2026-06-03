@@ -47,7 +47,32 @@ public sealed class JsonConfigurationStore(string configurationPath) : IConfigur
     private static LabelGeneratorConfiguration CreateDefaultConfiguration() =>
         new()
         {
-            Application = new ApplicationSettings(),
+            Application = new ApplicationSettings
+            {
+                LabelStarters =
+                [
+                    new LabelStarterProfile
+                    {
+                        Id = "demo-open",
+                        DisplayName = "Demo labels",
+                        Description = "Open the label generator with the demo data source and product label.",
+                        DataSourceId = "demo",
+                        LabelTemplateId = "a4-2x7-demo",
+                        ActionMode = LabelStarterActionMode.Open,
+                        UserMode = true
+                    },
+                    new LabelStarterProfile
+                    {
+                        Id = "demo-preview",
+                        DisplayName = "Demo preview",
+                        Description = "Load the demo data source and open preview for the product label.",
+                        DataSourceId = "demo",
+                        LabelTemplateId = "a4-2x7-demo",
+                        ActionMode = LabelStarterActionMode.Preview,
+                        UserMode = true
+                    }
+                ]
+            },
             DataSources =
             [
                 new DataSourceProfile

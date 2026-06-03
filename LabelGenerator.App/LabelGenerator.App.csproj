@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <None Include="Config\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="lng\**\*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Templates\**\*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="info.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Include="logo.jpg" CopyToOutputDirectory="PreserveNewest" />

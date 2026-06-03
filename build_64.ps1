@@ -56,6 +56,14 @@ dotnet publish (Join-Path $root "LabelGenerator.Designer\LabelGenerator.Designer
     -o $publishDir
 
 Write-Host ""
+Write-Host "Publishing starter app..."
+dotnet publish (Join-Path $root "LabelGenerator.Starter\LabelGenerator.Starter.csproj") `
+    -c $Configuration `
+    -r $Runtime `
+    --self-contained true `
+    -o $publishDir
+
+Write-Host ""
 Write-Host "Creating timestamped zip..."
 Compress-Archive -Path $publishDir -DestinationPath $zipPath -Force
 

@@ -1,93 +1,80 @@
+using System.Text.Json;
+
 namespace LabelGenerator.Core.Localization;
 
 public static class UiTextLocalizer
 {
-    private static readonly Dictionary<string, string> Bulgarian = new(StringComparer.Ordinal)
-    {
-        ["Windows Label Generator"] = "Генератор на етикети",
-        ["Label Generator"] = "Генератор на етикети",
-        ["Configuration & loading"] = "Конфигурация и зареждане",
-        ["Daily use"] = "Работа",
-        ["Data source"] = "Източник на данни",
-        ["Data sources"] = "Източници на данни",
-        ["Configure"] = "Конфигурация",
-        ["Load view"] = "Зареди",
-        ["Template"] = "Шаблон",
-        ["Designer"] = "Дизайнер",
-        ["Printer"] = "Принтер",
-        ["Scan"] = "Сканиране",
-        ["Mark"] = "Маркирай",
-        ["Mark & Print"] = "Маркирай и печатай",
-        ["Copies"] = "Копия",
-        ["Start"] = "Старт",
-        ["Preview"] = "Преглед",
-        ["Print"] = "Печат",
-        ["Primary view"] = "Основен изглед",
-        ["Regex filters"] = "Regex филтри",
-        ["Apply filters"] = "Приложи филтри",
-        ["Clear filters"] = "Изчисти филтри",
-        ["Load details"] = "Зареди детайли",
-        ["Only selected"] = "Само избрани",
-        ["Show filtered"] = "Покажи филтрирани",
-        ["Detail debug view"] = "Детайлен debug изглед",
-        ["Selected: "] = "Избрани: ",
-        ["On"] = "Вкл.",
-        ["Column"] = "Колона",
-        ["Regex pattern"] = "Regex шаблон",
-        ["Case"] = "Регистър",
-        ["Quick Mark & Print"] = "Бързо маркиране и печат",
-        ["Scan code, load detail rows, and print immediately."] = "Сканира код, зарежда детайлите и печата веднага.",
-        ["Scan & print"] = "Сканирай и печатай",
-        ["No data source"] = "Няма източник",
-        ["No template"] = "Няма шаблон",
-        ["Default printer"] = "Принтер по подразбиране",
-        ["Quantity policy"] = "Количество",
-        ["Copies fixed to 1; LabelCount is respected."] = "Копията са 1; LabelCount се използва.",
-        ["Key(s)"] = "Ключ(ове)",
-        ["Detail rows"] = "Детайлни редове",
-        ["Labels"] = "Етикети",
-        ["Ready to scan."] = "Готово за сканиране.",
-        ["Close"] = "Затвори",
-        ["Data source configuration"] = "Конфигурация на източници",
-        ["New"] = "Нов",
-        ["Delete"] = "Изтрий",
-        ["Id"] = "Id",
-        ["Name"] = "Име",
-        ["Provider"] = "Provider",
-        ["Key column"] = "Ключова колона",
-        ["Max rows"] = "Макс. редове",
-        ["Timeout seconds"] = "Timeout секунди",
-        ["Connection string"] = "Connection string",
-        ["Detail view"] = "Детайлен изглед",
-        ["Primary SELECT"] = "Primary SELECT",
-        ["Detail SELECT"] = "Detail SELECT",
-        ["Visible columns"] = "Видими колони",
-        ["Lookup key column"] = "Lookup ключова колона",
-        ["Test scan value"] = "Тест scan стойност",
-        ["Lookup SELECT ({Scan} is the scanned value)"] = "Lookup SELECT ({Scan} е сканираната стойност)",
-        ["Apply"] = "Приложи",
-        ["Test primary"] = "Тест primary",
-        ["Test lookup"] = "Тест lookup",
-        ["Save"] = "Запази",
-        ["Cancel"] = "Отказ",
-        ["Language"] = "Език"
-    };
+    private static readonly Dictionary<string, IReadOnlyDictionary<string, string>> TranslationCache = new(StringComparer.OrdinalIgnoreCase);
 
-    public static string NormalizeLanguage(string? language) =>
-        string.Equals(language, "bg", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(language, "bg-BG", StringComparison.OrdinalIgnoreCase)
-            ? "bg"
-            : "en";
+    public static string NormalizeLanguage(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            return "en";
+        }
+
+        var normalized = language.Trim();
+        var separatorIndex = normalized.IndexOfAny(['-', '_']);
+        if (separatorIndex > 0)
+        {
+            normalized = normalized[..separatorIndex];
+        }
+
+        return normalized.ToLowerInvariant();
+    }
 
     public static string Translate(string value, string? language)
     {
-        if (!string.Equals(NormalizeLanguage(language), "bg", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrEmpty(value))
         {
             return value;
         }
 
-        return Bulgarian.TryGetValue(value, out var translated)
+        var normalizedLanguage = NormalizeLanguage(language);
+        if (string.Equals(normalizedLanguage, "en", StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        var translations = LoadTranslations(normalizedLanguage);
+        return translations.TryGetValue(value, out var translated) && !string.IsNullOrEmpty(translated)
             ? translated
             : value;
+    }
+
+    private static IReadOnlyDictionary<string, string> LoadTranslations(string language)
+    {
+        lock (TranslationCache)
+        {
+            if (TranslationCache.TryGetValue(language, out var cached))
+            {
+                return cached;
+            }
+
+            var loaded = LoadTranslationFile(language);
+            TranslationCache[language] = loaded;
+            return loaded;
+        }
+    }
+
+    private static IReadOnlyDictionary<string, string> LoadTranslationFile(string language)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "lng", $"{language}.json");
+        if (!File.Exists(path))
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        try
+        {
+            var json = File.ReadAllText(path);
+            var values = JsonSerializer.Deserialize<Dictionary<string, string>>(json)
+                ?? new Dictionary<string, string>();
+            return new Dictionary<string, string>(values, StringComparer.Ordinal);
+        }
+        catch
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
     }
 }
