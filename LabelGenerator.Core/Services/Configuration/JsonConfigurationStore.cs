@@ -63,6 +63,16 @@ public sealed class JsonConfigurationStore(string configurationPath) : IConfigur
                     },
                     new LabelStarterProfile
                     {
+                        Id = "demo-load",
+                        DisplayName = "Demo load",
+                        Description = "Open the demo label workflow and load the master view.",
+                        DataSourceId = "demo",
+                        LabelTemplateId = "a4-2x7-demo",
+                        ActionMode = LabelStarterActionMode.Load,
+                        UserMode = true
+                    },
+                    new LabelStarterProfile
+                    {
                         Id = "demo-preview",
                         DisplayName = "Demo preview",
                         Description = "Load the demo data source and open preview for the product label.",

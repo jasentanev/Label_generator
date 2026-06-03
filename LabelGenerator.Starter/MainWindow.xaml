@@ -39,19 +39,6 @@
             <Setter Property="Foreground" Value="White" />
         </Style>
 
-        <Style TargetType="TextBox">
-            <Setter Property="Height" Value="28" />
-            <Setter Property="Margin" Value="0,2,0,8" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
-        </Style>
-
-        <Style TargetType="ComboBox">
-            <Setter Property="Height" Value="28" />
-            <Setter Property="Margin" Value="0,2,0,8" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
-        </Style>
-
         <Style TargetType="GroupBox">
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
@@ -105,18 +92,17 @@
                             VerticalAlignment="Top">
                     <Button Content="Reload"
                             Click="ReloadButton_Click" />
-                    <Button Content="Save"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Click="SaveButton_Click" />
+                    <Button Content="Config"
+                            Click="ConfigButton_Click" />
                 </StackPanel>
             </Grid>
         </Border>
 
         <Grid Grid.Row="1" Margin="12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.05*" />
-                <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="0.95*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="1.05*" />
             </Grid.ColumnDefinitions>
 
             <GroupBox Header="Prepared label workflows">
@@ -127,10 +113,8 @@
                         <Button Content="Open selected"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 Click="OpenSelectedButton_Click" />
-                        <Button Content="New"
-                                Click="NewProfileButton_Click" />
-                        <Button Content="Delete"
-                                Click="DeleteProfileButton_Click" />
+                        <Button Content="Config"
+                                Click="ConfigButton_Click" />
                     </StackPanel>
 
                     <ListBox x:Name="ProfilesListBox"
@@ -169,92 +153,46 @@
                 </DockPanel>
             </GroupBox>
 
-            <GroupBox Grid.Column="2" Header="Label Manager">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid Margin="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+            <GroupBox Grid.Column="2" Header="Label preview">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                        <TextBlock Text="Name" />
-                        <TextBox x:Name="NameTextBox" Grid.Row="1" Grid.ColumnSpan="3" />
+                    <StackPanel Margin="0,0,0,10">
+                        <TextBlock x:Name="PreviewTitleTextBlock"
+                                   Text="No label selected"
+                                   FontSize="16"
+                                   FontWeight="Bold" />
+                        <TextBlock x:Name="PreviewSummaryTextBlock"
+                                   Foreground="{StaticResource MutedTextBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0" />
+                    </StackPanel>
 
-                        <TextBlock Grid.Row="2" Text="Description" />
-                        <TextBox x:Name="DescriptionTextBox"
-                                 Grid.Row="3"
-                                 Grid.ColumnSpan="3"
-                                 Height="70"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto" />
+                    <Border Grid.Row="1"
+                            Background="#FAFAFA"
+                            BorderBrush="{StaticResource BorderBrushSoft}"
+                            BorderThickness="1"
+                            Padding="18">
+                        <Viewbox Stretch="Uniform">
+                            <Canvas x:Name="PreviewCanvas"
+                                    Width="420"
+                                    Height="260"
+                                    Background="White" />
+                        </Viewbox>
+                    </Border>
 
-                        <TextBlock Grid.Row="4" Text="Datasource" />
-                        <TextBlock Grid.Row="4" Grid.Column="2" Text="Label" />
-                        <ComboBox x:Name="DataSourceComboBox"
-                                  Grid.Row="5"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedValuePath="Id" />
-                        <ComboBox x:Name="LabelComboBox"
-                                  Grid.Row="5"
-                                  Grid.Column="2"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedValuePath="Id" />
-
-                        <TextBlock Grid.Row="6" Text="Action" />
-                        <TextBlock Grid.Row="6" Grid.Column="2" Text="Mode" />
-                        <ComboBox x:Name="ActionComboBox"
-                                  Grid.Row="7" />
-                        <StackPanel Grid.Row="7"
-                                    Grid.Column="2"
-                                    Orientation="Vertical">
-                            <CheckBox x:Name="UsersCheckBox"
-                                      Content="Users"
-                                      IsChecked="True"
-                                      Margin="0,2,0,6" />
-                            <CheckBox x:Name="EnabledCheckBox"
-                                      Content="Enabled"
-                                      IsChecked="True" />
-                        </StackPanel>
-
-                        <TextBlock Grid.Row="8"
-                                   Grid.ColumnSpan="3"
-                                   Text="Command line preview"
-                                   Margin="0,12,0,0" />
-                        <TextBox x:Name="CommandPreviewTextBox"
-                                 Grid.Row="9"
-                                 Grid.ColumnSpan="3"
-                                 IsReadOnly="True"
-                                 TextWrapping="NoWrap" />
-
-                        <StackPanel Grid.Row="10"
-                                    Grid.ColumnSpan="3"
-                                    Orientation="Horizontal"
-                                    HorizontalAlignment="Right"
-                                    Margin="0,12,0,0">
-                            <Button Content="Apply"
-                                    Style="{StaticResource PrimaryButtonStyle}"
-                                    Click="ApplyProfileButton_Click" />
-                            <Button Content="Open"
-                                    Click="OpenSelectedButton_Click" />
-                        </StackPanel>
-                    </Grid>
-                </ScrollViewer>
+                    <TextBox x:Name="CommandPreviewTextBox"
+                             Grid.Row="2"
+                             IsReadOnly="True"
+                             Height="30"
+                             Margin="0,10,0,0"
+                             VerticalContentAlignment="Center"
+                             BorderBrush="{StaticResource BorderBrushSoft}" />
+                </Grid>
             </GroupBox>
         </Grid>
 

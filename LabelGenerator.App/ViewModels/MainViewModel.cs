@@ -290,6 +290,12 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
+        if (startupOptions.ActionMode == StartupActionMode.Load)
+        {
+            StatusMessage = $"Startup load completed: {primaryRows.Count} primary row(s).";
+            return;
+        }
+
         if (startupOptions.ActionMode == StartupActionMode.Preview)
         {
             await PreviewAsync();

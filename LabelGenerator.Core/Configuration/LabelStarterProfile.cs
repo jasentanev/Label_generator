@@ -24,6 +24,7 @@ public sealed class LabelStarterProfile
 public enum LabelStarterActionMode
 {
     Open,
+    Load,
     Preview,
     Print
 }

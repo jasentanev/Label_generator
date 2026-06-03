@@ -1,12 +1,16 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using LabelGenerator.Core.Configuration;
 using LabelGenerator.Core.Models;
 using LabelGenerator.Core.Services.Configuration;
+using ShapeLine = System.Windows.Shapes.Line;
+using ShapeRectangle = System.Windows.Shapes.Rectangle;
 
 namespace LabelGenerator.Starter;
 
@@ -18,7 +22,7 @@ public partial class MainWindow : Window
 
     private LabelGeneratorConfiguration configuration = new();
     private StarterProfileView? selectedProfile;
-    private bool isLoading;
+    private string selectedProfileId = string.Empty;
 
     public MainWindow()
     {
@@ -30,14 +34,7 @@ public partial class MainWindow : Window
         configurationStore = new JsonConfigurationStore(configurationPath);
 
         ProfilesListBox.ItemsSource = profiles;
-        ActionComboBox.ItemsSource = Enum.GetValues<LabelStarterActionMode>();
-
         Loaded += MainWindow_Loaded;
-        DataSourceComboBox.SelectionChanged += (_, _) => RefreshCommandPreview();
-        LabelComboBox.SelectionChanged += (_, _) => RefreshCommandPreview();
-        ActionComboBox.SelectionChanged += (_, _) => RefreshCommandPreview();
-        UsersCheckBox.Checked += (_, _) => RefreshCommandPreview();
-        UsersCheckBox.Unchecked += (_, _) => RefreshCommandPreview();
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -49,14 +46,10 @@ public partial class MainWindow : Window
 
     private async Task LoadConfigurationAsync()
     {
-        isLoading = true;
         try
         {
             configuration = await configurationStore.LoadAsync();
             configuration.Application.LabelStarters ??= [];
-
-            DataSourceComboBox.ItemsSource = configuration.DataSources;
-            LabelComboBox.ItemsSource = configuration.LabelTemplates;
 
             profiles.Clear();
             foreach (var profile in BuildProfiles(configuration))
@@ -64,19 +57,16 @@ public partial class MainWindow : Window
                 profiles.Add(new StarterProfileView(profile));
             }
 
-            selectedProfile = profiles.FirstOrDefault();
+            selectedProfile = profiles.FirstOrDefault(profile =>
+                    string.Equals(profile.Profile.Id, selectedProfileId, StringComparison.OrdinalIgnoreCase))
+                ?? profiles.FirstOrDefault();
             ProfilesListBox.SelectedItem = selectedProfile;
-            LoadProfileEditor(selectedProfile?.Profile);
+            RenderSelectedPreview();
             SetStatus($"Loaded {profiles.Count} starter profile(s). Config: {configurationPath}");
         }
         catch (Exception ex)
         {
             SetStatus($"Configuration load failed: {ex.Message}");
-        }
-        finally
-        {
-            isLoading = false;
-            RefreshCommandPreview();
         }
     }
 
@@ -84,7 +74,7 @@ public partial class MainWindow : Window
     {
         if (value.Application.LabelStarters.Count > 0)
         {
-            return value.Application.LabelStarters;
+            return value.Application.LabelStarters.Where(profile => profile.IsEnabled);
         }
 
         var dataSource = value.DataSources.FirstOrDefault();
@@ -112,134 +102,28 @@ public partial class MainWindow : Window
 
     private void ProfilesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (isLoading)
-        {
-            return;
-        }
-
         selectedProfile = ProfilesListBox.SelectedItem as StarterProfileView;
-        LoadProfileEditor(selectedProfile?.Profile);
-    }
-
-    private void LoadProfileEditor(LabelStarterProfile? profile)
-    {
-        isLoading = true;
-        try
-        {
-            NameTextBox.Text = profile?.DisplayName ?? string.Empty;
-            DescriptionTextBox.Text = profile?.Description ?? string.Empty;
-            DataSourceComboBox.SelectedValue = profile?.DataSourceId ?? string.Empty;
-            LabelComboBox.SelectedValue = profile?.LabelTemplateId ?? string.Empty;
-            ActionComboBox.SelectedItem = profile?.ActionMode ?? LabelStarterActionMode.Open;
-            UsersCheckBox.IsChecked = profile?.UserMode ?? true;
-            EnabledCheckBox.IsChecked = profile?.IsEnabled ?? true;
-            RefreshCommandPreview();
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private void NewProfileButton_Click(object sender, RoutedEventArgs e)
-    {
-        var profile = new LabelStarterProfile
-        {
-            Id = $"starter-{DateTime.Now:yyyyMMddHHmmss}",
-            DisplayName = "New starter",
-            Description = "Prepared label workflow.",
-            DataSourceId = configuration.DataSources.FirstOrDefault()?.Id ?? string.Empty,
-            LabelTemplateId = configuration.LabelTemplates.FirstOrDefault()?.Id ?? string.Empty,
-            ActionMode = LabelStarterActionMode.Open,
-            UserMode = true,
-            IsEnabled = true
-        };
-
-        var view = new StarterProfileView(profile);
-        profiles.Add(view);
-        ProfilesListBox.SelectedItem = view;
-        SetStatus("New starter profile created. Apply and Save to persist.");
-    }
-
-    private void ApplyProfileButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (selectedProfile is null)
-        {
-            NewProfileButton_Click(sender, e);
-            selectedProfile = ProfilesListBox.SelectedItem as StarterProfileView;
-        }
-
-        if (selectedProfile is null)
-        {
-            return;
-        }
-
-        ApplyEditorToProfile(selectedProfile.Profile);
-        selectedProfile.Refresh();
-        ProfilesListBox.Items.Refresh();
-        RefreshCommandPreview();
-        SetStatus("Starter profile applied. Save to persist.");
-    }
-
-    private void ApplyEditorToProfile(LabelStarterProfile profile)
-    {
-        profile.DisplayName = string.IsNullOrWhiteSpace(NameTextBox.Text)
-            ? profile.DisplayName
-            : NameTextBox.Text.Trim();
-        profile.Description = DescriptionTextBox.Text.Trim();
-        profile.DataSourceId = DataSourceComboBox.SelectedValue as string ?? string.Empty;
-        profile.LabelTemplateId = LabelComboBox.SelectedValue as string ?? string.Empty;
-        profile.ActionMode = ActionComboBox.SelectedItem is LabelStarterActionMode mode
-            ? mode
-            : LabelStarterActionMode.Open;
-        profile.UserMode = UsersCheckBox.IsChecked == true;
-        profile.IsEnabled = EnabledCheckBox.IsChecked == true;
-    }
-
-    private void DeleteProfileButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (selectedProfile is null)
-        {
-            return;
-        }
-
-        var answer = MessageBox.Show(
-            $"Delete starter '{selectedProfile.Profile.DisplayName}'?",
-            "Delete starter",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-
-        if (answer != MessageBoxResult.Yes)
-        {
-            return;
-        }
-
-        profiles.Remove(selectedProfile);
-        selectedProfile = profiles.FirstOrDefault();
-        ProfilesListBox.SelectedItem = selectedProfile;
-        SetStatus("Starter profile deleted. Save to persist.");
-    }
-
-    private async void SaveButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (selectedProfile is not null)
-        {
-            ApplyEditorToProfile(selectedProfile.Profile);
-            selectedProfile.Refresh();
-        }
-
-        configuration.Application.LabelStarters = profiles
-            .Select(profile => profile.Profile)
-            .ToList();
-
-        await configurationStore.SaveAsync(configuration);
-        ProfilesListBox.Items.Refresh();
-        SetStatus($"Saved starter profiles. Config: {configurationPath}");
+        selectedProfileId = selectedProfile?.Profile.Id ?? string.Empty;
+        RenderSelectedPreview();
     }
 
     private async void ReloadButton_Click(object sender, RoutedEventArgs e)
     {
         await LoadConfigurationAsync();
+    }
+
+    private async void ConfigButton_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new StarterConfigWindow(configurationStore, configuration, selectedProfile?.Profile.Id)
+        {
+            Owner = this
+        };
+
+        if (window.ShowDialog() == true)
+        {
+            selectedProfileId = window.SelectedProfileId;
+            await LoadConfigurationAsync();
+        }
     }
 
     private void OpenSelectedButton_Click(object sender, RoutedEventArgs e)
@@ -250,8 +134,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        ApplyEditorToProfile(selectedProfile.Profile);
-        selectedProfile.Refresh();
         LaunchProfile(selectedProfile.Profile);
     }
 
@@ -293,13 +175,149 @@ public partial class MainWindow : Window
         }
     }
 
+    private void RenderSelectedPreview()
+    {
+        var profile = selectedProfile?.Profile;
+        var template = profile is null
+            ? null
+            : configuration.LabelTemplates.FirstOrDefault(candidate =>
+                string.Equals(candidate.Id, profile.LabelTemplateId, StringComparison.OrdinalIgnoreCase));
+
+        CommandPreviewTextBox.Text = profile is null
+            ? string.Empty
+            : "LabelGenerator.App.exe " + string.Join(" ", BuildArguments(profile).Select(QuoteArgument));
+
+        if (profile is null || template is null)
+        {
+            PreviewTitleTextBlock.Text = "No label selected";
+            PreviewSummaryTextBlock.Text = string.Empty;
+            PreviewCanvas.Children.Clear();
+            return;
+        }
+
+        var dataSource = configuration.DataSources.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, profile.DataSourceId, StringComparison.OrdinalIgnoreCase));
+
+        PreviewTitleTextBlock.Text = template.DisplayName;
+        PreviewSummaryTextBlock.Text =
+            $"Datasource: {dataSource?.DisplayName ?? profile.DataSourceId} | Action: {profile.ActionMode} | Users: {profile.UserMode}";
+        RenderTemplatePreview(template);
+    }
+
+    private void RenderTemplatePreview(LabelTemplateProfile template)
+    {
+        PreviewCanvas.Children.Clear();
+        var labelWidth = ToDip(template.Sheet.LabelWidthMillimeters);
+        var labelHeight = ToDip(template.Sheet.LabelHeightMillimeters);
+        PreviewCanvas.Width = Math.Max(160, labelWidth);
+        PreviewCanvas.Height = Math.Max(100, labelHeight);
+
+        PreviewCanvas.Children.Add(new Border
+        {
+            Width = labelWidth,
+            Height = labelHeight,
+            BorderBrush = template.Design.ShowBorder ? Brushes.LightGray : Brushes.Transparent,
+            BorderThickness = template.Design.ShowBorder ? new Thickness(1) : new Thickness(0),
+            Background = Brushes.White
+        });
+
+        foreach (var element in template.Design.Elements)
+        {
+            var visual = CreateElementPreview(element);
+            visual.Width = ToDip(element.WidthMillimeters);
+            visual.Height = ToDip(element.HeightMillimeters);
+            Canvas.SetLeft(visual, ToDip(element.XMillimeters));
+            Canvas.SetTop(visual, ToDip(element.YMillimeters));
+            PreviewCanvas.Children.Add(visual);
+        }
+    }
+
+    private static FrameworkElement CreateElementPreview(LabelDesignElement element) =>
+        element.Type switch
+        {
+            LabelElementType.Text => CreateTextPreview(element, element.Text),
+            LabelElementType.Field => CreateTextPreview(element, "{" + element.FieldName + "}"),
+            LabelElementType.Barcode => CreateBarcodePlaceholder(element),
+            LabelElementType.Image => CreateTextPreview(element, "Image"),
+            LabelElementType.Rectangle => CreateRectanglePreview(element),
+            LabelElementType.Line => CreateLinePreview(element),
+            _ => CreateTextPreview(element, string.Empty)
+        };
+
+    private static TextBlock CreateTextPreview(LabelDesignElement element, string text) =>
+        new()
+        {
+            Text = text,
+            FontSize = Math.Max(4, element.FontSize),
+            FontWeight = element.IsBold ? FontWeights.SemiBold : FontWeights.Normal,
+            FontStyle = element.IsItalic ? FontStyles.Italic : FontStyles.Normal,
+            TextDecorations = element.IsStrikethrough ? TextDecorations.Strikethrough : null,
+            Foreground = ParseBrush(element.Foreground, Brushes.Black),
+            Background = ParseBrush(element.Background, Brushes.Transparent),
+            TextWrapping = TextWrapping.Wrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextAlignment = element.TextAlignment switch
+            {
+                LabelTextAlignment.Center => TextAlignment.Center,
+                LabelTextAlignment.Right => TextAlignment.Right,
+                _ => TextAlignment.Left
+            }
+        };
+
+    private static FrameworkElement CreateBarcodePlaceholder(LabelDesignElement element) =>
+        new Border
+        {
+            BorderBrush = Brushes.Black,
+            BorderThickness = new Thickness(1),
+            Background = Brushes.White,
+            Child = new TextBlock
+            {
+                Text = "||||||||||||",
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = ParseBrush(element.Foreground, Brushes.Black)
+            }
+        };
+
+    private static FrameworkElement CreateRectanglePreview(LabelDesignElement element) =>
+        new ShapeRectangle
+        {
+            Stroke = ParseBrush(element.Foreground, Brushes.Black),
+            StrokeThickness = ToDip(Math.Max(0.1, element.LineThicknessMillimeters)),
+            StrokeDashArray = CreateStrokeDashArray(element.LineStyle),
+            Fill = ParseBrush(element.Background, Brushes.Transparent)
+        };
+
+    private static FrameworkElement CreateLinePreview(LabelDesignElement element) =>
+        new ShapeLine
+        {
+            X1 = 0,
+            Y1 = ToDip(element.HeightMillimeters) / 2,
+            X2 = ToDip(element.WidthMillimeters),
+            Y2 = ToDip(element.HeightMillimeters) / 2,
+            Stroke = ParseBrush(element.Foreground, Brushes.Black),
+            StrokeThickness = ToDip(Math.Max(0.1, element.LineThicknessMillimeters)),
+            StrokeDashArray = CreateStrokeDashArray(element.LineStyle),
+            Stretch = Stretch.Fill
+        };
+
+    private static DoubleCollection? CreateStrokeDashArray(LabelLineStyle style) =>
+        style switch
+        {
+            LabelLineStyle.Dashed => [4, 2],
+            LabelLineStyle.Dotted => [1, 2],
+            _ => null
+        };
+
     private static string ResolveMainAppPath()
     {
         var executablePath = Path.Combine(AppContext.BaseDirectory, "LabelGenerator.App.exe");
         return File.Exists(executablePath) ? executablePath : string.Empty;
     }
 
-    private static IReadOnlyList<string> BuildArguments(LabelStarterProfile profile)
+    public static IReadOnlyList<string> BuildArguments(LabelStarterProfile profile)
     {
         var arguments = new List<string>();
         if (!string.IsNullOrWhiteSpace(profile.DataSourceId))
@@ -319,7 +337,11 @@ public partial class MainWindow : Window
             arguments.Add("-Users");
         }
 
-        if (profile.ActionMode == LabelStarterActionMode.Preview)
+        if (profile.ActionMode == LabelStarterActionMode.Load)
+        {
+            arguments.Add("-Load");
+        }
+        else if (profile.ActionMode == LabelStarterActionMode.Preview)
         {
             arguments.Add("-Preview");
         }
@@ -331,21 +353,7 @@ public partial class MainWindow : Window
         return arguments;
     }
 
-    private void RefreshCommandPreview()
-    {
-        if (isLoading)
-        {
-            return;
-        }
-
-        var profile = new LabelStarterProfile();
-        ApplyEditorToProfile(profile);
-        CommandPreviewTextBox.Text = "LabelGenerator.App.exe " + string.Join(
-            " ",
-            BuildArguments(profile).Select(QuoteArgument));
-    }
-
-    private static string QuoteArgument(string argument) =>
+    public static string QuoteArgument(string argument) =>
         argument.Contains(' ') ? $"\"{argument}\"" : argument;
 
     private void LoadBranding()
@@ -386,7 +394,26 @@ public partial class MainWindow : Window
         return bitmap;
     }
 
+    private static Brush ParseBrush(string value, Brush fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return (Brush)(new BrushConverter().ConvertFromString(value) ?? fallback);
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
     private void SetStatus(string message) => StatusTextBlock.Text = message;
+
+    private static double ToDip(double millimeters) => millimeters * 96.0 / 25.4;
 
     private sealed class StarterProfileView(LabelStarterProfile profile)
     {
@@ -398,9 +425,5 @@ public partial class MainWindow : Window
 
         public string Summary =>
             $"Datasource: {Profile.DataSourceId} | Label: {Profile.LabelTemplateId} | Action: {Profile.ActionMode} | Users: {Profile.UserMode}";
-
-        public void Refresh()
-        {
-        }
     }
 }

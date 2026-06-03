@@ -45,6 +45,14 @@ public sealed class StartupOptions
                 continue;
             }
 
+            if (string.Equals(current, "-Load", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(current, "--Load", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(current, "/Load", StringComparison.OrdinalIgnoreCase))
+            {
+                actionMode = StartupActionMode.Load;
+                continue;
+            }
+
             if (string.Equals(current, "-Print", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(current, "--Print", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(current, "/Print", StringComparison.OrdinalIgnoreCase))
