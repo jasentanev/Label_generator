@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using LabelGenerator.App.Localization;
 using LabelGenerator.App.ViewModels;
 
 namespace LabelGenerator.App;
@@ -21,6 +22,7 @@ public partial class QuickMarkPrintWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        WpfLocalization.Apply(this, viewModel.ApplicationLanguage);
         FocusScanBox();
     }
 

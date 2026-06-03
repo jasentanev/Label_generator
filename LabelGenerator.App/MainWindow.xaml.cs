@@ -3,6 +3,7 @@ using System.Data;
 using System.IO;
 using System.Windows.Input;
 using LabelGenerator.App.Designing;
+using LabelGenerator.App.Localization;
 using LabelGenerator.App.Printing;
 using LabelGenerator.App.ViewModels;
 using LabelGenerator.Core.Services.Audit;
@@ -15,17 +16,24 @@ namespace LabelGenerator.App;
 
 public partial class MainWindow : Window
 {
+    private static readonly TimeSpan MinimumSplashDuration = TimeSpan.FromSeconds(3);
+
     private readonly MainViewModel viewModel;
     private readonly JsonConfigurationStore configurationStore;
     private readonly DataSourceService dataSourceService;
     private readonly StartupOptions startupOptions;
     private readonly BootSplashWindow? bootSplashWindow;
+    private readonly DateTimeOffset bootSplashShownAt;
 
     public MainWindow()
     {
         var baseDirectory = AppContext.BaseDirectory;
         bootSplashWindow = BootSplashLoader.TryCreate(baseDirectory);
-        bootSplashWindow?.Show();
+        if (bootSplashWindow is not null)
+        {
+            bootSplashShownAt = DateTimeOffset.Now;
+            bootSplashWindow.Show();
+        }
 
         App.WriteStartupLog("MainWindow.ctor before InitializeComponent");
         InitializeComponent();
@@ -37,10 +45,7 @@ public partial class MainWindow : Window
         var configurationPath = ConfigurationPathResolver.ResolveSharedConfigurationPath(bundledConfigurationPath);
         App.WriteStartupLog($"MainWindow configurationPath={configurationPath}");
         var assetBaseDirectory = Path.GetDirectoryName(configurationPath) ?? baseDirectory;
-        var auditPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "LabelGenerator",
-            "audit.log");
+        var auditPath = Path.Combine(baseDirectory, "log", "audit.log");
         configurationStore = new JsonConfigurationStore(configurationPath);
         dataSourceService = new DataSourceService();
 
@@ -64,15 +69,27 @@ public partial class MainWindow : Window
         App.WriteStartupLog("MainWindow.ContentRendered");
         await Task.Yield();
         await viewModel.InitializeAsync();
-        CloseBootSplash();
+        WpfLocalization.Apply(this, viewModel.ApplicationLanguage);
+        await CloseBootSplashAsync();
         await viewModel.ExecuteStartupActionAsync();
         App.WriteStartupLog("MainWindow.InitializeAsync completed");
     }
 
-    private void CloseBootSplash()
+    private async Task CloseBootSplashAsync()
     {
         try
         {
+            if (bootSplashWindow is null)
+            {
+                return;
+            }
+
+            var remaining = MinimumSplashDuration - (DateTimeOffset.Now - bootSplashShownAt);
+            if (remaining > TimeSpan.Zero)
+            {
+                await Task.Delay(remaining);
+            }
+
             bootSplashWindow?.Close();
         }
         catch (Exception ex)
@@ -116,7 +133,9 @@ public partial class MainWindow : Window
 
     private async Task MarkScanValueAsync()
     {
-        var keys = await viewModel.LookupScanKeysAsync(ScanTextBox.Text);
+        var scanValue = ScanTextBox.Text;
+        var keys = await viewModel.LookupScanKeysAsync(scanValue);
+        ScanTextBox.Clear();
         if (keys.Count == 0)
         {
             PlayMarkFailureSound();
@@ -144,7 +163,6 @@ public partial class MainWindow : Window
         if (selectedCount > 0)
         {
             PlayMarkSuccessSound();
-            ScanTextBox.Clear();
             return;
         }
 
@@ -262,6 +280,7 @@ public partial class MainWindow : Window
         if (window.ShowDialog() == true)
         {
             await viewModel.InitializeAsync();
+            WpfLocalization.Apply(this, viewModel.ApplicationLanguage);
         }
     }
 }

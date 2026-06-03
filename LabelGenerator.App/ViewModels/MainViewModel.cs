@@ -10,6 +10,7 @@ using LabelGenerator.Core.Services.Filtering;
 using LabelGenerator.Core.Services.Printing;
 using LabelGenerator.Core.Services.Templates;
 using LabelGenerator.Core.Utilities;
+using LabelGenerator.Core.Localization;
 
 namespace LabelGenerator.App.ViewModels;
 
@@ -39,6 +40,7 @@ public sealed class MainViewModel : ViewModelBase
     private int startLabelPosition = 1;
     private bool isBusy;
     private string statusMessage = "Load a data source to start.";
+    private string applicationLanguage = "en";
     private int selectedPrimaryCount;
     private bool isShowingOnlySelectedRows;
 
@@ -184,6 +186,12 @@ public sealed class MainViewModel : ViewModelBase
         private set => SetProperty(ref statusMessage, value);
     }
 
+    public string ApplicationLanguage
+    {
+        get => applicationLanguage;
+        private set => SetProperty(ref applicationLanguage, UiTextLocalizer.NormalizeLanguage(value));
+    }
+
     public int SelectedPrimaryCount
     {
         get => selectedPrimaryCount;
@@ -200,6 +208,7 @@ public sealed class MainViewModel : ViewModelBase
         {
             var configuration = await configurationStore.LoadAsync();
             App.WriteStartupLog("MainViewModel configuration loaded");
+            ApplicationLanguage = configuration.Application.Language;
 
             DataSources.Clear();
             foreach (var profile in configuration.DataSources)

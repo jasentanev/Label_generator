@@ -2,7 +2,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
+using LabelGenerator.App.Localization;
 using LabelGenerator.Core.Configuration;
+using LabelGenerator.Core.Localization;
 using LabelGenerator.Core.Models;
 using LabelGenerator.Core.Services.Configuration;
 using LabelGenerator.Core.Services.DataSources;
@@ -37,6 +39,13 @@ public partial class DataSourceConfigWindow : Window
             "MySqlConnector",
             "System.Data.Odbc"
         };
+        LanguageComboBox.ItemsSource = new[]
+        {
+            new LanguageOption("en", "English"),
+            new LanguageOption("bg", "Български")
+        };
+        LanguageComboBox.DisplayMemberPath = nameof(LanguageOption.DisplayName);
+        LanguageComboBox.SelectedValuePath = nameof(LanguageOption.Code);
 
         Loaded += DataSourceConfigWindow_Loaded;
     }
@@ -46,8 +55,10 @@ public partial class DataSourceConfigWindow : Window
         Loaded -= DataSourceConfigWindow_Loaded;
         var loadedConfiguration = await configurationStore.LoadAsync();
         configuration = CloneConfiguration(loadedConfiguration);
+        LanguageComboBox.SelectedValue = UiTextLocalizer.NormalizeLanguage(configuration.Application.Language);
         RefreshList(configuration.DataSources.FirstOrDefault());
         StatusTextBlock.Text = "Data source configuration loaded.";
+        WpfLocalization.Apply(this, configuration.Application.Language);
     }
 
     private static LabelGeneratorConfiguration CloneConfiguration(LabelGeneratorConfiguration source)
@@ -240,6 +251,7 @@ public partial class DataSourceConfigWindow : Window
             ApplyEditorToProfile(selectedProfile);
         }
 
+        configuration.Application.Language = LanguageComboBox.SelectedValue as string ?? "en";
         await configurationStore.SaveAsync(configuration);
         DialogResult = true;
         Close();
@@ -253,4 +265,6 @@ public partial class DataSourceConfigWindow : Window
 
     private static int ParseInt(string value, int fallback) =>
         int.TryParse(value, out var result) ? result : fallback;
+
+    private sealed record LanguageOption(string Code, string DisplayName);
 }

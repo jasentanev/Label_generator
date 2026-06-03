@@ -344,6 +344,8 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.ColumnSpan="2" Text="Type" />
@@ -393,20 +395,25 @@
                         <TextBox x:Name="ForegroundTextBox" Grid.Row="15" />
                         <TextBox x:Name="BackgroundTextBox" Grid.Row="15" Grid.Column="1" Margin="6,2,0,8" />
 
-                        <TextBlock Grid.Row="16" Text="Barcode" />
+                        <TextBlock Grid.Row="16" Text="Line thickness mm" />
+                        <TextBlock Grid.Row="16" Grid.Column="1" Text="Style" Margin="6,0,0,0" />
+                        <TextBox x:Name="LineThicknessTextBox" Grid.Row="17" />
+                        <ComboBox x:Name="LineStyleComboBox" Grid.Row="17" Grid.Column="1" Margin="6,2,0,8" />
+
+                        <TextBlock Grid.Row="18" Text="Barcode" />
                         <CheckBox x:Name="HumanReadableCheckBox"
-                                  Grid.Row="16"
+                                  Grid.Row="18"
                                   Grid.Column="1"
                                   Content="Text"
                                   Margin="6,0,0,0" />
-                        <ComboBox x:Name="BarcodeSymbologyComboBox" Grid.Row="17" Grid.ColumnSpan="2" />
+                        <ComboBox x:Name="BarcodeSymbologyComboBox" Grid.Row="19" Grid.ColumnSpan="2" />
 
-                        <DockPanel Grid.Row="18" Grid.ColumnSpan="2" Margin="0,4,0,0">
+                        <DockPanel Grid.Row="20" Grid.ColumnSpan="2" Margin="0,4,0,0">
                             <Button DockPanel.Dock="Right" Content="Browse" Click="BrowseImageButton_Click" />
                             <TextBox x:Name="ImagePathTextBox" Margin="0,2,6,0" />
                         </DockPanel>
 
-                        <Button Grid.Row="19"
+                        <Button Grid.Row="21"
                                 Grid.ColumnSpan="2"
                                 Content="Apply element"
                                 HorizontalAlignment="Stretch"

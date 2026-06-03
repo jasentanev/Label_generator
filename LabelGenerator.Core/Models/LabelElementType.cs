@@ -6,5 +6,6 @@ public enum LabelElementType
     Field,
     Barcode,
     Image,
-    Rectangle
+    Rectangle,
+    Line
 }

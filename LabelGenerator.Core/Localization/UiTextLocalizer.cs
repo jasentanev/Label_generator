@@ -1,0 +1,93 @@
+namespace LabelGenerator.Core.Localization;
+
+public static class UiTextLocalizer
+{
+    private static readonly Dictionary<string, string> Bulgarian = new(StringComparer.Ordinal)
+    {
+        ["Windows Label Generator"] = "Генератор на етикети",
+        ["Label Generator"] = "Генератор на етикети",
+        ["Configuration & loading"] = "Конфигурация и зареждане",
+        ["Daily use"] = "Работа",
+        ["Data source"] = "Източник на данни",
+        ["Data sources"] = "Източници на данни",
+        ["Configure"] = "Конфигурация",
+        ["Load view"] = "Зареди",
+        ["Template"] = "Шаблон",
+        ["Designer"] = "Дизайнер",
+        ["Printer"] = "Принтер",
+        ["Scan"] = "Сканиране",
+        ["Mark"] = "Маркирай",
+        ["Mark & Print"] = "Маркирай и печатай",
+        ["Copies"] = "Копия",
+        ["Start"] = "Старт",
+        ["Preview"] = "Преглед",
+        ["Print"] = "Печат",
+        ["Primary view"] = "Основен изглед",
+        ["Regex filters"] = "Regex филтри",
+        ["Apply filters"] = "Приложи филтри",
+        ["Clear filters"] = "Изчисти филтри",
+        ["Load details"] = "Зареди детайли",
+        ["Only selected"] = "Само избрани",
+        ["Show filtered"] = "Покажи филтрирани",
+        ["Detail debug view"] = "Детайлен debug изглед",
+        ["Selected: "] = "Избрани: ",
+        ["On"] = "Вкл.",
+        ["Column"] = "Колона",
+        ["Regex pattern"] = "Regex шаблон",
+        ["Case"] = "Регистър",
+        ["Quick Mark & Print"] = "Бързо маркиране и печат",
+        ["Scan code, load detail rows, and print immediately."] = "Сканира код, зарежда детайлите и печата веднага.",
+        ["Scan & print"] = "Сканирай и печатай",
+        ["No data source"] = "Няма източник",
+        ["No template"] = "Няма шаблон",
+        ["Default printer"] = "Принтер по подразбиране",
+        ["Quantity policy"] = "Количество",
+        ["Copies fixed to 1; LabelCount is respected."] = "Копията са 1; LabelCount се използва.",
+        ["Key(s)"] = "Ключ(ове)",
+        ["Detail rows"] = "Детайлни редове",
+        ["Labels"] = "Етикети",
+        ["Ready to scan."] = "Готово за сканиране.",
+        ["Close"] = "Затвори",
+        ["Data source configuration"] = "Конфигурация на източници",
+        ["New"] = "Нов",
+        ["Delete"] = "Изтрий",
+        ["Id"] = "Id",
+        ["Name"] = "Име",
+        ["Provider"] = "Provider",
+        ["Key column"] = "Ключова колона",
+        ["Max rows"] = "Макс. редове",
+        ["Timeout seconds"] = "Timeout секунди",
+        ["Connection string"] = "Connection string",
+        ["Detail view"] = "Детайлен изглед",
+        ["Primary SELECT"] = "Primary SELECT",
+        ["Detail SELECT"] = "Detail SELECT",
+        ["Visible columns"] = "Видими колони",
+        ["Lookup key column"] = "Lookup ключова колона",
+        ["Test scan value"] = "Тест scan стойност",
+        ["Lookup SELECT ({Scan} is the scanned value)"] = "Lookup SELECT ({Scan} е сканираната стойност)",
+        ["Apply"] = "Приложи",
+        ["Test primary"] = "Тест primary",
+        ["Test lookup"] = "Тест lookup",
+        ["Save"] = "Запази",
+        ["Cancel"] = "Отказ",
+        ["Language"] = "Език"
+    };
+
+    public static string NormalizeLanguage(string? language) =>
+        string.Equals(language, "bg", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(language, "bg-BG", StringComparison.OrdinalIgnoreCase)
+            ? "bg"
+            : "en";
+
+    public static string Translate(string value, string? language)
+    {
+        if (!string.Equals(NormalizeLanguage(language), "bg", StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        return Bulgarian.TryGetValue(value, out var translated)
+            ? translated
+            : value;
+    }
+}

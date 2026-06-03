@@ -13,6 +13,8 @@ using LabelGenerator.Core.Services.Configuration;
 using Microsoft.Win32;
 using ZXing;
 using ZXing.Common;
+using ShapeLine = System.Windows.Shapes.Line;
+using ShapeRectangle = System.Windows.Shapes.Rectangle;
 
 namespace LabelGenerator.Designer;
 
@@ -52,6 +54,7 @@ public partial class MainWindow : Window
         NewElementTypeComboBox.ItemsSource = Enum.GetValues<LabelElementType>();
         NewElementTypeComboBox.SelectedItem = LabelElementType.Text;
         TextAlignmentComboBox.ItemsSource = Enum.GetValues<LabelTextAlignment>();
+        LineStyleComboBox.ItemsSource = Enum.GetValues<LabelLineStyle>();
         BarcodeSymbologyComboBox.ItemsSource = Enum.GetValues<BarcodeSymbology>();
 
         await LoadConfigurationAsync();
@@ -329,6 +332,8 @@ public partial class MainWindow : Window
             StrikethroughCheckBox.IsChecked = false;
             ForegroundTextBox.Text = string.Empty;
             BackgroundTextBox.Text = string.Empty;
+            LineThicknessTextBox.Text = string.Empty;
+            LineStyleComboBox.SelectedItem = null;
             BarcodeSymbologyComboBox.SelectedItem = null;
             HumanReadableCheckBox.IsChecked = false;
             ImagePathTextBox.Text = string.Empty;
@@ -350,6 +355,8 @@ public partial class MainWindow : Window
         StrikethroughCheckBox.IsChecked = selectedElement.IsStrikethrough;
         ForegroundTextBox.Text = selectedElement.Foreground;
         BackgroundTextBox.Text = selectedElement.Background;
+        LineThicknessTextBox.Text = FormatNumber(selectedElement.LineThicknessMillimeters);
+        LineStyleComboBox.SelectedItem = selectedElement.LineStyle;
         BarcodeSymbologyComboBox.SelectedItem = selectedElement.BarcodeSymbology;
         HumanReadableCheckBox.IsChecked = selectedElement.ShowHumanReadableText;
         ImagePathTextBox.Text = selectedElement.ImagePath;
@@ -386,6 +393,10 @@ public partial class MainWindow : Window
         element.IsStrikethrough = StrikethroughCheckBox.IsChecked == true;
         element.Foreground = string.IsNullOrWhiteSpace(ForegroundTextBox.Text) ? "#000000" : ForegroundTextBox.Text.Trim();
         element.Background = string.IsNullOrWhiteSpace(BackgroundTextBox.Text) ? "Transparent" : BackgroundTextBox.Text.Trim();
+        element.LineThicknessMillimeters = Math.Max(0.1, ParseDouble(LineThicknessTextBox.Text, element.LineThicknessMillimeters));
+        element.LineStyle = LineStyleComboBox.SelectedItem is LabelLineStyle lineStyle
+            ? lineStyle
+            : element.LineStyle;
         element.BarcodeSymbology = BarcodeSymbologyComboBox.SelectedItem is BarcodeSymbology symbology
             ? symbology
             : element.BarcodeSymbology;
@@ -561,7 +572,21 @@ public partial class MainWindow : Window
                 WidthMillimeters = 40,
                 HeightMillimeters = 20,
                 Foreground = "#000000",
-                Background = "Transparent"
+                Background = "Transparent",
+                LineThicknessMillimeters = 0.3,
+                LineStyle = LabelLineStyle.Solid
+            },
+            LabelElementType.Line => new LabelDesignElement
+            {
+                Type = LabelElementType.Line,
+                XMillimeters = 4,
+                YMillimeters = 4,
+                WidthMillimeters = 40,
+                HeightMillimeters = 3,
+                Foreground = "#000000",
+                Background = "Transparent",
+                LineThicknessMillimeters = 0.3,
+                LineStyle = LabelLineStyle.Solid
             },
             _ => new LabelDesignElement
             {
@@ -621,7 +646,9 @@ public partial class MainWindow : Window
             WidthMillimeters = 40,
             HeightMillimeters = 20,
             Foreground = "#000000",
-            Background = "Transparent"
+            Background = "Transparent",
+            LineThicknessMillimeters = 0.3,
+            LineStyle = LabelLineStyle.Solid
         });
 
     private void AddImageButton_Click(object sender, RoutedEventArgs e)
@@ -818,11 +845,40 @@ public partial class MainWindow : Window
             LabelElementType.Image => CreateImagePreview(element),
             LabelElementType.Rectangle => new Border
             {
-                BorderBrush = ParseBrush(element.Foreground, Brushes.Black),
-                BorderThickness = new Thickness(1),
-                Background = ParseBrush(element.Background, Brushes.Transparent)
+                Child = new ShapeRectangle
+                {
+                    Stroke = ParseBrush(element.Foreground, Brushes.Black),
+                    StrokeThickness = ToDip(Math.Max(0.1, element.LineThicknessMillimeters)),
+                    StrokeDashArray = CreateStrokeDashArray(element.LineStyle),
+                    Fill = ParseBrush(element.Background, Brushes.Transparent)
+                }
             },
+            LabelElementType.Line => CreateLinePreview(element),
             _ => CreateTextBlock(element, string.Empty)
+        };
+
+    private static FrameworkElement CreateLinePreview(LabelDesignElement element)
+    {
+        var height = ToDip(element.HeightMillimeters);
+        return new ShapeLine
+        {
+            X1 = 0,
+            Y1 = height / 2,
+            X2 = ToDip(element.WidthMillimeters),
+            Y2 = height / 2,
+            Stroke = ParseBrush(element.Foreground, Brushes.Black),
+            StrokeThickness = ToDip(Math.Max(0.1, element.LineThicknessMillimeters)),
+            StrokeDashArray = CreateStrokeDashArray(element.LineStyle),
+            Stretch = Stretch.Fill
+        };
+    }
+
+    private static DoubleCollection? CreateStrokeDashArray(LabelLineStyle style) =>
+        style switch
+        {
+            LabelLineStyle.Dashed => [4, 2],
+            LabelLineStyle.Dotted => [1, 2],
+            _ => null
         };
 
     private static TextBlock CreateTextBlock(LabelDesignElement element, string text) =>

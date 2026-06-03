@@ -34,6 +34,10 @@ public sealed class LabelDesignElement
 
     public string Background { get; set; } = "Transparent";
 
+    public double LineThicknessMillimeters { get; set; } = 0.3;
+
+    public LabelLineStyle LineStyle { get; set; } = LabelLineStyle.Solid;
+
     public BarcodeSymbology BarcodeSymbology { get; set; } = BarcodeSymbology.Code128;
 
     public bool ShowHumanReadableText { get; set; } = true;
@@ -49,6 +53,7 @@ public sealed class LabelDesignElement
             LabelElementType.Barcode => $"Barcode: {FieldName}",
             LabelElementType.Image => $"Image: {Path.GetFileName(ImagePath)}",
             LabelElementType.Rectangle => "Rectangle",
+            LabelElementType.Line => "Line",
             _ => Type.ToString()
         };
 

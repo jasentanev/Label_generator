@@ -47,6 +47,7 @@ public sealed class JsonConfigurationStore(string configurationPath) : IConfigur
     private static LabelGeneratorConfiguration CreateDefaultConfiguration() =>
         new()
         {
+            Application = new ApplicationSettings(),
             DataSources =
             [
                 new DataSourceProfile

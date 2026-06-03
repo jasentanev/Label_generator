@@ -10,6 +10,8 @@ using LabelGenerator.Core.Models;
 using LabelGenerator.Core.Services.Printing;
 using ZXing;
 using ZXing.Common;
+using ShapeLine = System.Windows.Shapes.Line;
+using ShapeRectangle = System.Windows.Shapes.Rectangle;
 
 namespace LabelGenerator.App.Printing;
 
@@ -138,6 +140,7 @@ public sealed class LabelDocumentFactory(string assetBaseDirectory)
             LabelElementType.Barcode => CreateBarcodeVisual(element, GetValue(row, element.FieldName, element.Text)),
             LabelElementType.Image => CreateImageVisual(element),
             LabelElementType.Rectangle => CreateRectangleVisual(element),
+            LabelElementType.Line => CreateLineVisual(element),
             _ => CreateTextBlock(element, string.Empty)
         };
     }
@@ -237,11 +240,33 @@ public sealed class LabelDocumentFactory(string assetBaseDirectory)
     }
 
     private static FrameworkElement CreateRectangleVisual(LabelDesignElement element) =>
-        new Border
+        new ShapeRectangle
         {
-            BorderBrush = ParseBrush(element.Foreground, Brushes.Black),
-            BorderThickness = new Thickness(1),
-            Background = ParseBrush(element.Background, Brushes.Transparent)
+            Stroke = ParseBrush(element.Foreground, Brushes.Black),
+            StrokeThickness = ToDip(Math.Max(0.1, element.LineThicknessMillimeters)),
+            StrokeDashArray = CreateStrokeDashArray(element.LineStyle),
+            Fill = ParseBrush(element.Background, Brushes.Transparent)
+        };
+
+    private static FrameworkElement CreateLineVisual(LabelDesignElement element) =>
+        new ShapeLine
+        {
+            X1 = 0,
+            Y1 = ToDip(element.HeightMillimeters) / 2,
+            X2 = ToDip(element.WidthMillimeters),
+            Y2 = ToDip(element.HeightMillimeters) / 2,
+            Stroke = ParseBrush(element.Foreground, Brushes.Black),
+            StrokeThickness = ToDip(Math.Max(0.1, element.LineThicknessMillimeters)),
+            StrokeDashArray = CreateStrokeDashArray(element.LineStyle),
+            Stretch = Stretch.Fill
+        };
+
+    private static DoubleCollection? CreateStrokeDashArray(LabelLineStyle style) =>
+        style switch
+        {
+            LabelLineStyle.Dashed => [4, 2],
+            LabelLineStyle.Dotted => [1, 2],
+            _ => null
         };
 
     private static Brush ParseBrush(string value, Brush fallback)

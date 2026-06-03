@@ -3,6 +3,8 @@ namespace LabelGenerator.Core.Services.Configuration;
 public static class ConfigurationPathResolver
 {
     private const string EnvironmentVariableName = "LABEL_GENERATOR_CONFIG";
+    private const string ApplicationDirectoryName = "LabelGenerator";
+    private const string ConfigurationFileName = "appsettings.json";
 
     public static string ResolveSharedConfigurationPath(string bundledConfigurationPath)
     {
@@ -14,21 +16,33 @@ public static class ConfigurationPathResolver
             return overridePath;
         }
 
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var sharedPath = Path.Combine(localAppData, "LabelGenerator", "appsettings.json");
-        EnsureParentDirectory(sharedPath);
-        SeedIfMissing(sharedPath, bundledConfigurationPath);
-        return sharedPath;
+        var localPath = Path.Combine(
+            Path.GetDirectoryName(bundledConfigurationPath) ?? AppContext.BaseDirectory,
+            ConfigurationFileName);
+        EnsureParentDirectory(localPath);
+        var legacyPath = ResolveLegacyConfigurationPath();
+        MigrateLegacyConfigurationIfNewer(localPath, legacyPath);
+        SeedIfMissing(localPath, legacyPath, bundledConfigurationPath);
+        return localPath;
     }
 
-    private static void SeedIfMissing(string targetPath, string bundledConfigurationPath)
+    private static void SeedIfMissing(string targetPath, params string[] sourcePaths)
     {
-        if (File.Exists(targetPath) || !File.Exists(bundledConfigurationPath))
+        if (File.Exists(targetPath))
         {
             return;
         }
 
-        File.Copy(bundledConfigurationPath, targetPath);
+        foreach (var sourcePath in sourcePaths)
+        {
+            if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+            {
+                continue;
+            }
+
+            File.Copy(sourcePath, targetPath);
+            return;
+        }
     }
 
     private static void EnsureParentDirectory(string path)
@@ -38,5 +52,28 @@ public static class ConfigurationPathResolver
         {
             Directory.CreateDirectory(directory);
         }
+    }
+
+    private static string ResolveLegacyConfigurationPath()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(localAppData, ApplicationDirectoryName, ConfigurationFileName);
+    }
+
+    private static void MigrateLegacyConfigurationIfNewer(string targetPath, string legacyPath)
+    {
+        if (!File.Exists(targetPath) || !File.Exists(legacyPath))
+        {
+            return;
+        }
+
+        var targetInfo = new FileInfo(targetPath);
+        var legacyInfo = new FileInfo(legacyPath);
+        if (legacyInfo.LastWriteTimeUtc <= targetInfo.LastWriteTimeUtc)
+        {
+            return;
+        }
+
+        File.Copy(legacyPath, targetPath, overwrite: true);
     }
 }

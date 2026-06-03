@@ -7,8 +7,8 @@ namespace LabelGenerator.App;
 public partial class App : Application
 {
     private static readonly string StartupLogPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "LabelGenerator",
+        AppContext.BaseDirectory,
+        "log",
         "startup.log");
 
     public static void WriteStartupLog(string message)
