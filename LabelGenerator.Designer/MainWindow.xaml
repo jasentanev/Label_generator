@@ -2,11 +2,12 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Label Template Designer"
-        Height="860"
-        Width="1380"
-        MinHeight="720"
-        MinWidth="1180"
+        Height="768"
+        Width="1024"
+        MinHeight="640"
+        MinWidth="900"
         WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
         KeyDown="Window_KeyDown"
         FontFamily="Plus Jakarta Sans, Segoe UI"
         Background="#F3F3F3">
@@ -80,40 +81,43 @@
                 BorderBrush="{StaticResource BorderBrushSoft}"
                 BorderThickness="0,0,0,1"
                 Padding="16,0">
-            <DockPanel>
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <TextBlock Text="Template Designer"
-                               FontSize="18"
-                               FontWeight="Bold"
-                               Margin="0,0,24,0" />
-                    <TextBlock Text="Template" FontWeight="SemiBold" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,8,0" />
-                    <ComboBox x:Name="TemplateComboBox"
-                              DisplayMemberPath="DisplayName"
-                              Width="280"
-                              SelectionChanged="TemplateComboBox_SelectionChanged" />
-                    <Button Content="New" Click="NewTemplateButton_Click" />
-                    <Button Content="Copy as new" Click="CopyTemplateAsNewButton_Click" />
-                    <Button Content="Delete" Click="DeleteTemplateButton_Click" />
-                    <Button Content="Save" Style="{StaticResource PrimaryButtonStyle}" Click="SaveButton_Click" />
-                </StackPanel>
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled">
+                <DockPanel MinWidth="930">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                        <TextBlock Text="Template Designer"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Margin="0,0,18,0" />
+                        <TextBlock Text="Template" FontWeight="SemiBold" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,8,0" />
+                        <ComboBox x:Name="TemplateComboBox"
+                                  DisplayMemberPath="DisplayName"
+                                  Width="220"
+                                  SelectionChanged="TemplateComboBox_SelectionChanged" />
+                        <Button Content="New" Click="NewTemplateButton_Click" />
+                        <Button Content="Copy as new" Click="CopyTemplateAsNewButton_Click" />
+                        <Button Content="Delete" Click="DeleteTemplateButton_Click" />
+                        <Button Content="Save" Style="{StaticResource PrimaryButtonStyle}" Click="SaveButton_Click" />
+                    </StackPanel>
 
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                    <TextBlock Text="Element type" FontWeight="SemiBold" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,8,0" />
-                    <ComboBox x:Name="NewElementTypeComboBox"
-                              Width="150" />
-                    <Button Content="New element" Style="{StaticResource PrimaryButtonStyle}" Click="NewElementButton_Click" />
-                    <Button Content="Delete selected" Click="DeleteSelectedComponentButton_Click" />
-                </StackPanel>
-            </DockPanel>
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                        <TextBlock Text="Element type" FontWeight="SemiBold" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,8,0" />
+                        <ComboBox x:Name="NewElementTypeComboBox"
+                                  Width="125" />
+                        <Button Content="New element" Style="{StaticResource PrimaryButtonStyle}" Click="NewElementButton_Click" />
+                        <Button Content="Delete selected" Click="DeleteSelectedComponentButton_Click" />
+                    </StackPanel>
+                </DockPanel>
+            </ScrollViewer>
         </Border>
 
         <Grid Grid.Row="1" Margin="12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="275" />
-                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="238" />
+                <ColumnDefinition Width="8" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="278" />
             </Grid.ColumnDefinitions>
 
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
@@ -275,7 +279,7 @@
                             </StackPanel>
                             <ListBox x:Name="ElementsListBox"
                                      DisplayMemberPath="DisplayName"
-                                     MinHeight="230"
+                                     MinHeight="170"
                                      SelectionChanged="ElementsListBox_SelectionChanged" />
                         </DockPanel>
                     </GroupBox>
@@ -295,7 +299,7 @@
                                    Margin="0,0,18,0" />
                         <TextBlock Text="Zoom" Foreground="{StaticResource MutedTextBrush}" />
                         <Slider x:Name="ZoomSlider"
-                                Width="180"
+                                Width="120"
                                 Minimum="0.75"
                                 Maximum="3"
                                 Value="2"

@@ -2,11 +2,12 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Label preview"
-        Height="820"
-        Width="980"
+        Height="720"
+        Width="900"
         MinHeight="520"
-        MinWidth="720"
-        WindowStartupLocation="CenterOwner">
+        MinWidth="680"
+        WindowStartupLocation="CenterOwner"
+        WindowState="Maximized">
     <Grid>
         <DocumentViewer x:Name="Viewer" />
     </Grid>

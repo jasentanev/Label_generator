@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Label Starter Configuration"
         Height="700"
-        Width="960"
-        MinHeight="620"
-        MinWidth="880"
+        Width="920"
+        MinHeight="600"
+        MinWidth="840"
         WindowStartupLocation="CenterOwner"
         FontFamily="Plus Jakarta Sans, Segoe UI"
         Background="#F3F3F3">
@@ -58,8 +58,8 @@
             <RowDefinition Height="42" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300" />
-            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="8" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
